@@ -78,36 +78,8 @@ void setUniforms(Program &program, glm::vec3 position) {
   mat4 m(1.f);
   m = glm::translate(m, position);
   program.setMat4("mvp", p * m);
-  program.setVec3("albedo", vec3(0.7f, 0.7f, 0.f));
+  program.setVec3("albedo", vec3(1.0f, 0.2f, 0.2f));
   program.setVec3("lightDir", normalize(vec3(1.f, 1.f, 1.f)));
-}
-
-Mesh* rect() {
-  auto * mesh = new Mesh();
-  mesh->positions = {
-      /* face 1 */
-      vec3(-1.0, -1.0, -1.0),
-      vec3(-1.0, 1.0, -1.0),
-      vec3(1.0, 1.0, -1.0),
-      vec3(1.0, -1.0, -1.0)
-  };
-  mesh->indices = {
-      0, 1, 2, 0, 2, 3,
-  };
-  mesh->generateSharpNormals();
-  return mesh;
-}
-
-Mesh* triangle() {
-  auto mesh = new Mesh();
-  mesh->positions = {
-      vec3(-1.0f, -1.0f, 0.0f),
-      vec3(1.0f, -1.0f, 0.0f),
-      vec3(0.0f,  1.0f, 0.0f),
-  };
-  mesh->generateSharpNormals();
-  mesh->indices = {0, 1, 2};
-  return mesh;
 }
 
 void Error(int error, const char* description)
@@ -153,26 +125,18 @@ int main() {
   GLuint positionsBuffer;
   GLuint normalsBuffer;
   GLuint indicesBuffer;
-  Heart g1(vec3(0));
-  Sphere g2(2.f, vec3(1, 1, 4));
-  Union g(&g1, &g2);
+  AABB g1(vec3(-3), vec3(3));
+  Sphere g2(6.f, vec3(4));
+  // Union g(&g1, &g2);
   // Intersection g(&g1, &g2);
-  // Difference g(&g1, &g2);
+  Difference g(&g1, &g2);
 
-  float area = 32.f;
-  Octree* octree = Octree::buildWithGeometry(glm::vec3(-area / 2.f), area, 8, &g);
-  int cutNum = 0;
-  Octree::simplify(octree, -1.f, &g, cutNum);
+  float area = 10.f;
+  Octree* octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 7, &g);
 
   Mesh* mesh = Octree::generateMesh(octree);
   cout << "triangle count: " << mesh->positions.size() << endl;
   // mesh->generateSharpNormals();
-
-  for (auto& p :mesh->positions) {
-    if (p == vec3(0.0)) {
-      cerr << "no solution for qef" << endl;
-    }
-  }
 
   Program program;
   if (!program.init(vert, frag)) {

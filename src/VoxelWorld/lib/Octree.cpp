@@ -91,18 +91,25 @@ bool Octree::getSelfQef(Octree *node, Topology *g, QefSolver &qef) {
   auto max = node->min + vec3(node->size);
   if (p.x < min.x || p.x > max.x ||
       p.y < min.y || p.y > max.y ||
-      p.y < min.y || p.x > max.y) {
+      p.z < min.z || p.z > max.z) {
     p = node->qef.massPoint;
   }
   g->normal(p, node->hermiteN);
   return true;
 }
 
-Octree *Octree::buildWithGeometry(glm::vec3 min, float size, int depth, Topology *geometry) {
+Octree *Octree::buildWithTopology(glm::vec3 min, float size, int depth, Topology *topology) {
+  int cutNum = 0;
+  Octree* root = buildRecursively(min, size, depth, topology);
+  root = simplify(root, -1, topology, cutNum);
+  return root;
+}
+
+Octree *Octree::buildRecursively(glm::vec3 min, float size, int depth, Topology *topology) {
   Octree *root = new Octree(min, size, depth);
   assert(depth > 0);
   if (depth == 1) {
-    if (!getSelfQef(root, geometry, root->qef)) {
+    if (!getSelfQef(root, topology, root->qef)) {
       root->internal = true;
     }
     root->isLeaf = true;
@@ -110,14 +117,14 @@ Octree *Octree::buildWithGeometry(glm::vec3 min, float size, int depth, Topology
   }
   for (int i = 0; i < 8; ++i) {
     root->children[i] =
-        buildWithGeometry(min + min_offset_subdivision[i] * size / 2.f, size / 2.f, depth - 1, geometry);
+        buildRecursively(min + min_offset_subdivision[i] * size / 2.f, size / 2.f, depth - 1, topology);
     root->cornerSigns[i] = root->children[i]->cornerSigns[i];
   }
   root->isLeaf = false;
   return root;
 }
 
-Octree *Octree::simplify(Octree *root, float threshold, Topology *geometry, int &count) {
+Octree *Octree::simplify(Octree *root, float threshold, Topology *topology, int &count) {
   if (!root) {
     return nullptr;
   }
@@ -133,7 +140,7 @@ Octree *Octree::simplify(Octree *root, float threshold, Topology *geometry, int 
   bool internal = true;
 
   for (auto &child : root->children) {
-    child = simplify(child, threshold, geometry, count);
+    child = simplify(child, threshold, topology, count);
     internal = internal && (child == nullptr);
   }
 

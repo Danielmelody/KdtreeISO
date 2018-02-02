@@ -56,10 +56,20 @@ public:
   bool solve(const glm::vec3& p1, const glm::vec3& p2, glm::vec3& out);
 };
 
+class AABB : public Topology {
+  glm::vec3 min_;
+  glm::vec3 max_;
+public:
+  float value(const glm::vec3 &p);
+  AABB(glm::vec3 min_, glm::vec3 max_):min_(min_), max_(max_) {};
+  ~AABB() {}
+};
+
 class Heart: public Topology {
+  float scale;
   glm::vec3 center;
 public:
-  Heart(glm::vec3 center):center(center) {}
+  Heart(float scale, glm::vec3 center):scale(scale), center(center) {}
   ~Heart() {}
   float value(const glm::vec3 &p);
 };

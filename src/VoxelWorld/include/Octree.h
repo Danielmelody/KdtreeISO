@@ -11,11 +11,15 @@
 
 class Octree {
 public:
-  static Octree* buildWithGeometry(glm::vec3 min, float size, int depth, Topology* geometry);
-  static Octree* simplify(Octree* root, float threshold, Topology* geometry, int &count);
+  static Octree* buildWithTopology(glm::vec3 min, float size, int depth, Topology *geometry);
   static Mesh* generateMesh(Octree* root);
   void collapse(Topology* g);
-  Octree(glm::vec3 min, float size, int depth):isLeaf(false), internal(false), min(min), size(size), depth(depth) {
+  Octree(glm::vec3 min, float size, int depth):
+      isLeaf(false),
+      internal(false),
+      min(min),
+      size(size),
+      depth(depth) {
     for (int i = 0; i < 8; ++i) {
       children[i] = nullptr;
     }
@@ -32,6 +36,8 @@ protected:
   static void contourEdge(Octree* nodes[4], int dir, Mesh* mesh);
   static void generateQuad(Octree* nodes[4], int dir, Mesh *mesh);
   static bool getSelfQef(Octree* node, Topology* geometry, QefSolver& qef);
+  static Octree* buildRecursively(glm::vec3 min, float size, int depth, Topology* geometry);
+  static Octree* simplify(Octree* root, float threshold, Topology* geometry, int &count);
 
   Octree* children[8];
   uint8_t cornerSigns[8];

@@ -1,7 +1,7 @@
 //
 // Created by Danielhu on 2018/1/13.
 //
-
+#include <algorithm>
 #include "Topology.h"
 
 using namespace glm;
@@ -69,8 +69,14 @@ bool Sphere::solve(const glm::vec3 &p1, const glm::vec3 &p2, glm::vec3 &out){
   return false;
 }
 
+float AABB::value(const glm::vec3 &p) {
+  vec3 offset = glm::abs(p - (min_ + max_) / 2.f);
+  offset -= (max_ - min_) / 2.f;
+  return min(length(offset), max(offset.x, max(offset.y, offset.z)));
+}
+
 float Heart::value(const glm::vec3 &p) {
-  glm::vec3 offset = p - center;
+  glm::vec3 offset = (p - center) / scale;
 
   float x = offset.x, y = offset.z, z = offset.y;
   float a = x * x + 9.0f / 4.0f * y * y + z * z - 1;
