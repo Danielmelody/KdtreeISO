@@ -23,10 +23,11 @@ const char *vert =
         "layout(location = 1) in vec3 normal;\n"
         "\n"
         "uniform mat4 mvp;\n"
+        "uniform mat4 m;\n"
         "smooth out vec3 fragNormal;\n"
         "\n"
         "void main() {\n"
-        "    fragNormal = normal;\n"
+        "    fragNormal = (m * vec4(normal, 1.0)).xyz;\n"
         "    gl_Position = mvp * vec4(position, 1.0);\n"
         "}";
 
@@ -42,6 +43,13 @@ const char *frag =
         "void main() {\n"
         "    color = albedo * max(dot(fragNormal, lightDir), 0.f);\n"
         "}";
+
+float cameraOffset = 20.f;
+double previousCursorX = 0.f;
+double previousCursorY = 0.f;
+float rotateX = 0.f;
+float rotateY = 0.f;
+bool pressing = false;
 
 void addMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint &indicesBuffer) {
   glGenBuffers(1, &positionsBuffer);
@@ -73,18 +81,43 @@ void drawMesh(Mesh *mesh, GLuint& positionsBuffer, GLuint& normalsBuffer, GLuint
   glDisableVertexAttribArray(1);
 }
 
-void setUniforms(Program &program, glm::vec3 position) {
+void setUniforms(Program &program) {
   mat4 p = glm::perspective(radians(45.f), 4.f / 3.f, 0.1f, 1000.f);
-  mat4 m(1.f);
-  m = glm::translate(m, position);
-  program.setMat4("mvp", p * m);
+  mat4 m = glm::rotate(mat4(), rotateX, vec3(0, 1, 0));
+  m = glm::rotate(m, rotateY, vec3(1, 0, 0));
+  mat4 v = glm::lookAt(vec3(0, 0, cameraOffset), vec3(0, 0, -1), vec3(0, 1, 0));
+  program.setMat4("m", m);
+  program.setMat4("mvp", p * v * m);
   program.setVec3("albedo", vec3(1.0f, 0.2f, 0.2f));
   program.setVec3("lightDir", normalize(vec3(1.f, 1.f, 1.f)));
 }
 
-void Error(int error, const char* description)
+void error(int error, const char* description)
 {
   cerr << error << ": " << description << endl;
+}
+
+void mouseInput(GLFWwindow *window, double x, double y) {
+  if (pressing) {
+    rotateX += 0.01 * (x - previousCursorX);
+    rotateY += 0.01 * (y - previousCursorY);
+    previousCursorX = x;
+    previousCursorY = y;
+  }
+}
+
+void scroll(GLFWwindow *window, double dx, double dy) {
+  cameraOffset -= 0.2 * dy;
+}
+
+void press(GLFWwindow* window, int button, int action, int mods) {
+  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+    pressing = true;
+    glfwGetCursorPos(window, &previousCursorX, &previousCursorY);
+  }
+  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+    pressing = false;
+  }
 }
 
 int main() {
@@ -116,7 +149,10 @@ int main() {
 
   cout << "OpenGL Version: " + string((const char *) glGetString(GL_VERSION)) << endl;
 
-  glfwSetErrorCallback(Error);
+  glfwSetErrorCallback(error);
+  glfwSetCursorPosCallback(window, mouseInput);
+  glfwSetScrollCallback(window, scroll);
+  glfwSetMouseButtonCallback(window, press);
 
   GLuint VertexArrayID;
   glGenVertexArrays(1, &VertexArrayID);
@@ -157,7 +193,7 @@ int main() {
      glfwPollEvents();
      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
      program.use();
-     setUniforms(program, vec3(0, 0, -20));
+     setUniforms(program);
      drawMesh(mesh, positionsBuffer, normalsBuffer, indicesBuffer);
      glfwSwapBuffers(window);
   }
