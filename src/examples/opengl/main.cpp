@@ -41,7 +41,7 @@ const char *frag =
         "uniform vec3 albedo;\n"
         "\n"
         "void main() {\n"
-        "    color = albedo * max(dot(fragNormal, lightDir), 0.f);\n"
+        "    color = albedo * max(dot(fragNormal, lightDir), 0.2f);\n"
         "}";
 
 float cameraOffset = 20.f;
@@ -75,6 +75,7 @@ void drawMesh(Mesh *mesh, GLuint& positionsBuffer, GLuint& normalsBuffer, GLuint
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 0, nullptr);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesBuffer);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
 
   glDisableVertexAttribArray(0);
@@ -88,8 +89,8 @@ void setUniforms(Program &program) {
   mat4 v = glm::lookAt(vec3(0, 0, cameraOffset), vec3(0, 0, -1), vec3(0, 1, 0));
   program.setMat4("m", m);
   program.setMat4("mvp", p * v * m);
-  program.setVec3("albedo", vec3(1.0f, 0.2f, 0.2f));
-  program.setVec3("lightDir", normalize(vec3(1.f, 1.f, 1.f)));
+  program.setVec3("albedo", vec3(1.0f, 1.0f, 1.0f));
+  program.setVec3("lightDir", normalize(vec3(0.f, 0.f, 1.f)));
 }
 
 void error(int error, const char* description)
@@ -161,17 +162,23 @@ int main() {
   GLuint positionsBuffer;
   GLuint normalsBuffer;
   GLuint indicesBuffer;
+  // Heart g1(5.0f, vec3());
   AABB g1(vec3(-3), vec3(3));
-  Sphere g2(6.f, vec3(4));
+  Sphere g2(4.f, vec3(4));
   // Union g(&g1, &g2);
   // Intersection g(&g1, &g2);
   Difference g(&g1, &g2);
 
-  float area = 10.f;
-  Octree* octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 7, &g);
+  float area = 15.f;
+  int losslessCull = 0;
+  int lossyCull = 0;
+  Octree* octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 6, &g, losslessCull);
+  Octree::uniformSimplify(octree, 1e-15, &g, lossyCull);
 
   Mesh* mesh = Octree::generateMesh(octree);
   cout << "triangle count: " << mesh->positions.size() << endl;
+  cout << "lossless cull: " << losslessCull << endl;
+  cout << "lossy cull: " << lossyCull << endl;
   // mesh->generateSharpNormals();
 
   Program program;
@@ -186,7 +193,7 @@ int main() {
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
-  glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 
   while (!glfwWindowShouldClose(window)) {

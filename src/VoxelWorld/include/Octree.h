@@ -11,10 +11,16 @@
 
 class Octree {
 public:
-  static Octree* buildWithTopology(glm::vec3 min, float size, int depth, Topology *geometry);
-  static Mesh* generateMesh(Octree* root);
-  void collapse(Topology* g);
-  Octree(glm::vec3 min, float size, int depth):
+  static Octree *buildWithTopology(glm::vec3 min,
+                                   float size,
+                                   int depth,
+                                   Topology *topology,
+                                   int &loselessCut);
+  static void uniformSimplify(Octree *root, float threshold, Topology *geometry, int &count);
+
+  static Mesh *generateMesh(Octree *root);
+  void collapse(Topology *g);
+  Octree(glm::vec3 min, float size, int depth) :
       isLeaf(false),
       internal(false),
       min(min),
@@ -30,16 +36,18 @@ public:
     }
   };
 protected:
-  static void generateVertexIndices(Octree* root, unsigned int& count, Mesh* mesh);
-  static void contourCell(Octree* root, Mesh* mesh);
-  static void contourFace(Octree* nodes[2], int dir, Mesh* mesh);
-  static void contourEdge(Octree* nodes[4], int dir, Mesh* mesh);
-  static void generateQuad(Octree* nodes[4], int dir, Mesh *mesh);
-  static bool getSelfQef(Octree* node, Topology* geometry, QefSolver& qef);
-  static Octree* buildRecursively(glm::vec3 min, float size, int depth, Topology* geometry);
-  static Octree* simplify(Octree* root, float threshold, Topology* geometry, int &count);
+  static void generateVertexIndices(Octree *root, unsigned int &count, Mesh *mesh);
+  static void contourCell(Octree *root, Mesh *mesh);
+  static void contourFace(Octree *nodes[2], int dir, Mesh *mesh);
+  static void contourEdge(Octree *nodes[4], int dir, Mesh *mesh);
+  static void generateQuad(Octree *nodes[4], int dir, Mesh *mesh);
+  static bool getSelfQef(Octree *node, Topology *geometry, QefSolver &qef);
+  static Octree *buildRecursively(glm::vec3 min, float size, int depth, Topology *geometry);
+  static Octree *losslessCompress(Octree *root, float threshold, Topology *geometry, int &count);
 
-  Octree* children[8];
+  static void calHermite(Octree* node, QefSolver& qef, Topology* g);
+
+  Octree *children[8];
   uint8_t cornerSigns[8];
   bool isLeaf;
   bool internal;

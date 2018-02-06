@@ -17,8 +17,8 @@ glm::vec3 svd_vmul_sym(const glm::mat3x3 &a, const glm::vec3 &v) {
   );
 }
 
-float qef_calc_error(const glm::mat3x3& A, const glm::vec3& x, const glm::vec3& b) {
-  glm::vec3 vtmp = b - svd_vmul_sym(A, x);
+float qef_calc_error(const glm::mat3x3& A, const glm::vec3& x, const glm::vec3& ATb, const float btb) {
+  glm::vec3 vtmp = ATb - svd_vmul_sym(A, x);
   return glm::dot(vtmp, vtmp);
 }
 
@@ -138,6 +138,21 @@ glm::vec3 svd_solve_ATA_ATb(const glm::mat3x3 &ATA, const glm::vec3 &ATb) {
   return x;
 }
 
+void QefSolver::set(const QefSolver &other) {
+  ATA[0][0] = other.ATA[0][0];
+  ATA[1][1] = other.ATA[1][1];
+  ATA[2][2] = other.ATA[2][2];
+
+  ATA[0][1] = other.ATA[0][1];
+  ATA[0][2] = other.ATA[0][2];
+  ATA[1][2] = other.ATA[1][2];
+
+  ATb = other.ATb;
+  btb = other.btb;
+  massPointSum = other.massPointSum;
+  pointCount = other.pointCount;
+}
+
 void QefSolver::combine(const QefSolver &other) {
   ATA[0][0] += other.ATA[0][0];
   ATA[1][1] += other.ATA[1][1];
@@ -148,6 +163,9 @@ void QefSolver::combine(const QefSolver &other) {
   ATA[1][2] += other.ATA[1][2];
 
   ATb += other.ATb;
+  btb += other.btb;
+  massPointSum += other.massPointSum;
+  pointCount += other.pointCount;
 }
 
 void QefSolver::add(const glm::vec3 &p, const glm::vec3 &n) {
@@ -157,16 +175,17 @@ void QefSolver::add(const glm::vec3 &p, const glm::vec3 &n) {
   ATA[1][1] += n.y * n.y;
   ATA[1][2] += n.y * n.z;
   ATA[2][2] += n.z * n.z;
-
-  ATb += n * glm::dot(p, n);
+  float dotp = glm::dot(p, n);;
+  ATb += n * dotp;
+  btb += dotp * dotp;
   pointCount++;
   massPointSum += p;
 }
 
 void QefSolver::solve(glm::vec3 &hermiteP, float &error) {
-  massPoint = massPointSum / (float) pointCount;
+  glm::vec3 massPoint = massPointSum / (float) pointCount;
   glm::vec3 _ATb = ATb - svd_vmul_sym(ATA, massPoint);
   hermiteP = svd_solve_ATA_ATb(ATA, _ATb);
-  error = qef_calc_error(ATA, hermiteP, _ATb);
+  error = qef_calc_error(ATA, hermiteP, _ATb, btb);
   hermiteP += massPoint;
 }

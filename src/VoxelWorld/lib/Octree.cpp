@@ -84,34 +84,29 @@ bool Octree::getSelfQef(Octree *node, Topology *g, QefSolver &qef) {
       }
     }
   }
-
-  auto &p = node->hermiteP;
-  qef.solve(p, node->error);
-  auto &min = node->min;
-  auto max = node->min + vec3(node->size);
-  if (p.x < min.x || p.x > max.x ||
-      p.y < min.y || p.y > max.y ||
-      p.z < min.z || p.z > max.z) {
-    p = node->qef.massPoint;
-  }
-  g->normal(p, node->hermiteN);
   return true;
 }
 
-Octree *Octree::buildWithTopology(glm::vec3 min, float size, int depth, Topology *topology) {
-  int cutNum = 0;
-  Octree* root = buildRecursively(min, size, depth, topology);
-  root = simplify(root, -1, topology, cutNum);
+Octree *Octree::buildWithTopology(
+    glm::vec3 min,
+    float size,
+    int depth,
+    Topology *topology,
+    int &losslessCut) {
+  Octree *root = buildRecursively(min, size, depth, topology);
+  root = losslessCompress(root, -1, topology, losslessCut);
   return root;
 }
 
 Octree *Octree::buildRecursively(glm::vec3 min, float size, int depth, Topology *topology) {
-  Octree *root = new Octree(min, size, depth);
+  auto root = new Octree(min, size, depth);
   assert(depth > 0);
   if (depth == 1) {
     if (!getSelfQef(root, topology, root->qef)) {
       root->internal = true;
+      return root;
     }
+    calHermite(root, root->qef, topology);
     root->isLeaf = true;
     return root;
   }
@@ -124,7 +119,7 @@ Octree *Octree::buildRecursively(glm::vec3 min, float size, int depth, Topology 
   return root;
 }
 
-Octree *Octree::simplify(Octree *root, float threshold, Topology *topology, int &count) {
+Octree *Octree::losslessCompress(Octree *root, float threshold, Topology *topology, int &count) {
   if (!root) {
     return nullptr;
   }
@@ -140,11 +135,9 @@ Octree *Octree::simplify(Octree *root, float threshold, Topology *topology, int 
   bool internal = true;
 
   for (auto &child : root->children) {
-    child = simplify(child, threshold, topology, count);
+    child = losslessCompress(child, threshold, topology, count);
     internal = internal && (child == nullptr);
   }
-
-  QefSolver qefSum;
 
   if (internal) {
     count++;
@@ -153,6 +146,37 @@ Octree *Octree::simplify(Octree *root, float threshold, Topology *topology, int 
   }
 
   return root;
+}
+
+void Octree::uniformSimplify(Octree *root, float threshold, Topology *geometry, int &count) {
+  if (!root) {
+    return;
+  }
+  if (root->isLeaf) {
+    return;
+  }
+  QefSolver sum;
+  for (auto &child : root->children) {
+    uniformSimplify(child, threshold, geometry, count);
+    if (child) {
+      sum.combine(child->qef);
+    }
+  }
+  vec3 tempP;
+  float sumError;
+  sum.solve(tempP, sumError);
+  root->qef.set(sum);
+  if (sumError > threshold) {
+  } else {
+    // getSelfQef(root, geometry, root->qef);
+    calHermite(root, sum, geometry);
+    count++;
+    for (auto &child: root->children) {
+      delete child;
+      child = nullptr;
+    }
+    root->isLeaf = true;
+  }
 }
 
 Mesh *Octree::generateMesh(Octree *root) {
@@ -293,9 +317,23 @@ void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh) {
 void Octree::collapse(Topology *g) {
   isLeaf = true;
   getSelfQef(this, g, qef);
+  calHermite(this, qef, g);
   qef.solve(hermiteP, error);
   for (int i = 0; i < 8; ++i) {
     delete children[i];
     children[i] = nullptr;
   }
+}
+
+void Octree::calHermite(Octree* node, QefSolver& qef, Topology* g) {
+  auto &p = node->hermiteP;
+  qef.solve(p, node->error);
+  auto &min = node->min;
+  auto max = node->min + vec3(node->size);
+  if (p.x < min.x || p.x > max.x ||
+      p.y < min.y || p.y > max.y ||
+      p.z < min.z || p.z > max.z) {
+    p = qef.massPointSum / (float) qef.pointCount;
+  }
+  g->normal(p, node->hermiteN);
 }
