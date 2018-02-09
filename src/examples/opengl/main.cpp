@@ -75,7 +75,7 @@ void drawMesh(Mesh *mesh, GLuint& positionsBuffer, GLuint& normalsBuffer, GLuint
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 0, nullptr);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesBuffer);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
 
   glDisableVertexAttribArray(0);
@@ -175,11 +175,11 @@ int main() {
   Octree* octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 6, &g, losslessCull);
   Octree::uniformSimplify(octree, 1e-15, &g, lossyCull);
 
-  Mesh* mesh = Octree::generateMesh(octree);
+  Mesh* mesh = Octree::generateMesh(octree, &g);
   cout << "triangle count: " << mesh->positions.size() << endl;
   cout << "lossless cull: " << losslessCull << endl;
   cout << "lossy cull: " << lossyCull << endl;
-  // mesh->generateSharpNormals();
+  // mesh->generateFlatNormals();
 
   Program program;
   if (!program.init(vert, frag)) {

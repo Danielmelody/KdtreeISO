@@ -6,6 +6,8 @@
 
 using namespace glm;
 
+float gradient_offset = 0.003f;
+float divergence_offset = 0.01f;
 
 bool Topology::solve(const glm::vec3 &p1, const glm::vec3 &p2, glm::vec3 &out) {
   auto offset = p2 - p1;
@@ -28,13 +30,28 @@ bool Topology::solve(const glm::vec3 &p1, const glm::vec3 &p2, glm::vec3 &out) {
 }
 
 void Topology::normal(const glm::vec3 &p, glm::vec3& out) {
-  float gradient_offset = 0.01f;
 
   float nx = value(p + vec3(gradient_offset, 0.f, 0.f)) - value(p - vec3(gradient_offset, 0.f, 0.f));
   float ny = value(p + vec3(0.f, gradient_offset, 0.f)) - value(p - vec3(0.f, gradient_offset, 0.f));
   float nz = value(p + vec3(0.f, 0.f, gradient_offset)) - value(p - vec3(0.f, 0.f, gradient_offset));
 
   out = normalize(vec3(nx, ny, nz));
+}
+
+glm::vec3 Topology::gradient(const glm::vec3 &p) {
+
+  float nx = value(p + vec3(gradient_offset, 0.f, 0.f)) - value(p - vec3(gradient_offset, 0.f, 0.f));
+  float ny = value(p + vec3(0.f, gradient_offset, 0.f)) - value(p - vec3(0.f, gradient_offset, 0.f));
+  float nz = value(p + vec3(0.f, 0.f, gradient_offset)) - value(p - vec3(0.f, 0.f, gradient_offset));
+
+  return vec3(nx, ny, nz) / gradient_offset;
+}
+
+float Topology::laplaceOperator(const glm::vec3 p) {
+  float lx = gradient(p + vec3(divergence_offset, 0.f, 0.f)).x - gradient(p - vec3(divergence_offset, 0.f, 0.f)).x;
+  float ly = gradient(p + vec3(0.f, divergence_offset, 0.f)).y - gradient(p - vec3(0.f, divergence_offset, 0.f)).y;
+  float lz = gradient(p + vec3(0.f, 0.f, divergence_offset)).z - gradient(p - vec3(0.f, 0.f, divergence_offset)).z;
+  return (lx + ly + lz) / divergence_offset;
 }
 
 uint8_t Topology::getMaterialID() {

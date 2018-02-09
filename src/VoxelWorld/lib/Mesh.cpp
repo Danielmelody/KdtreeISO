@@ -2,9 +2,10 @@
 // Created by Danielhu on 2018/1/22.
 //
 
+#include <Topology.h>
 #include "Mesh.h"
 
-void Mesh::generateSharpNormals() {
+void Mesh::generateFlatNormals() {
   normals.resize(positions.size());
   std::vector<glm::vec3> flat_positions;
   std::vector<glm::vec3> flat_normals;

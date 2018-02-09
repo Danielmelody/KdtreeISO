@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <glm/glm.hpp>
+#include "Topology.h"
 
 
 class Mesh {
@@ -15,7 +16,7 @@ class Mesh {
   std::vector<glm::vec3> positions;
   std::vector<glm::vec3> normals;
 
-  void generateSharpNormals();
+  void generateFlatNormals();
 };
 
 #endif //VOXELWORLD_MESH_H

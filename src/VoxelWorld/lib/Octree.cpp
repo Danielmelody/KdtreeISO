@@ -179,54 +179,50 @@ void Octree::uniformSimplify(Octree *root, float threshold, Topology *geometry, 
   }
 }
 
-Mesh *Octree::generateMesh(Octree *root) {
+Mesh *Octree::generateMesh(Octree *root, Topology *geometry) {
   assert(root);
   auto *mesh = new Mesh();
-  unsigned int vertexCount = 0;
-  generateVertexIndices(root, vertexCount, mesh);
-  contourCell(root, mesh);
+  generateVertexIndices(root, mesh, geometry);
+  contourCell(root, mesh, geometry);
   return mesh;
 }
 
-void Octree::generateVertexIndices(Octree *root, unsigned int &count, Mesh *mesh) {
-  if (!root) {
+void Octree::generateVertexIndices(Octree *node,  Mesh *mesh, Topology *geometry) {
+  if (!node) {
     return;
   }
-  if (root->isLeaf) {
-    root->vertexIndex = count++;
-    mesh->positions.push_back(root->hermiteP);
-    mesh->normals.push_back(root->hermiteN);
-    return;
-  }
+  node->vertexIndex = static_cast<unsigned int>(mesh->positions.size());
+  mesh->positions.push_back(node->hermiteP);
+  mesh->normals.push_back(node->hermiteN);
   for (int i = 0; i < 8; ++i) {
-    generateVertexIndices(root->children[i], count, mesh);
+    generateVertexIndices(node->children[i], mesh, geometry);
   }
 }
 
-void Octree::contourCell(Octree *root, Mesh *mesh) {
+void Octree::contourCell(Octree *root, Mesh *mesh, Topology *geometry) {
   if (!root || root->isLeaf) {
     return;
   }
   for (int i = 0; i < 8; ++i) {
-    contourCell(root->children[i], mesh);
+    contourCell(root->children[i], mesh, geometry);
   }
   for (int i = 0; i < 12; ++i) {
     Octree *nodes[2] = {
         root->children[cellProcFaceMask[i][0]],
         root->children[cellProcFaceMask[i][1]],
     };
-    contourFace(nodes, cellProcFaceMask[i][2], mesh);
+    contourFace(nodes, cellProcFaceMask[i][2], mesh, geometry);
   }
   for (int i = 0; i < 6; ++i) {
     Octree *nodes[4];
     for (int j = 0; j < 4; ++j) {
       nodes[j] = root->children[cellProcEdgeMask[i][j]];
     }
-    contourEdge(nodes, cellProcEdgeMask[i][4], mesh);
+    contourEdge(nodes, cellProcEdgeMask[i][4], mesh, geometry);
   }
 }
 
-void Octree::contourFace(Octree *nodes[2], int dir, Mesh *mesh) {
+void Octree::contourFace(Octree *nodes[2], int dir, Mesh *mesh, Topology *geometry) {
   if (!nodes[0] || !nodes[1]) {
     return;
   }
@@ -241,7 +237,7 @@ void Octree::contourFace(Octree *nodes[2], int dir, Mesh *mesh) {
         subdivision_face[j] = subdivision_face[j]->children[faceProcFaceMask[dir][i][j]];
       }
     }
-    contourFace(subdivision_face, faceProcFaceMask[dir][i][2], mesh);
+    contourFace(subdivision_face, faceProcFaceMask[dir][i][2], mesh, geometry);
   }
   for (int i = 0; i < 4; ++i) {
     Octree *edge_nodes[4];
@@ -260,17 +256,16 @@ void Octree::contourFace(Octree *nodes[2], int dir, Mesh *mesh) {
         edge_nodes[j] = nodes[order[j]]->children[c[j]];
       }
     }
-    contourEdge(edge_nodes, faceProcEdgeMask[dir][i][5], mesh);
+    contourEdge(edge_nodes, faceProcEdgeMask[dir][i][5], mesh, geometry);
   }
 }
 
-void Octree::contourEdge(Octree *nodes[4], int dir, Mesh *mesh) {
+void Octree::contourEdge(Octree *nodes[4], int dir, Mesh *mesh, Topology *geometry) {
   if (!nodes[0] || !nodes[1] || !nodes[2] || !nodes[3]) {
     return;
   }
   if (nodes[0]->isLeaf && nodes[1]->isLeaf && nodes[2]->isLeaf && nodes[3]->isLeaf) {
-    int vertexCount = 0;
-    generateQuad(nodes, vertexCount, mesh);
+    generateQuad(nodes, dir, mesh, geometry);
     return;
   }
 
@@ -284,11 +279,11 @@ void Octree::contourEdge(Octree *nodes[4], int dir, Mesh *mesh) {
         subdivision_edge[j] = nodes[j];
       }
     }
-    contourEdge(subdivision_edge, edgeProcEdgeMask[dir][i][4], mesh);
+    contourEdge(subdivision_edge, edgeProcEdgeMask[dir][i][4], mesh, geometry);
   }
 }
 
-void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh) {
+void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g) {
   int minNodeIndex = -1;
   int maxDepth = -1;
   for (int i = 0; i < 4; ++i) {
@@ -301,17 +296,36 @@ void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh) {
   uint8_t corner1 = nodes[minNodeIndex]->cornerSigns[edge_map[edgeIndex][0]];
   uint8_t corner2 = nodes[minNodeIndex]->cornerSigns[edge_map[edgeIndex][1]];
   bool signDir = (corner1 != corner2);
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      int quadIndex = triangleIndicesFlip[i * 3 + j];
+      int adjacentNodeIndices[2] = {
+          triangleIndices[i * 3 + (j + 1) % 3],
+          triangleIndices[i * 3 + (j + 2) % 3]
+      };
+      if (signDir) {
+        quadIndex = triangleIndices[i * 3 + j];
+        adjacentNodeIndices[0] = triangleIndices[i * 3 + (j + 1) % 3];
+        adjacentNodeIndices[1] = triangleIndices[i * 3 + (j + 2) % 3];
+      }
 
-  if (signDir) {
-    for (int i = 0; i < 6; ++i) {
-      mesh->indices.push_back(nodes[triangleIndices[i]]->vertexIndex);
-    }
-  } else {
-    for (int i = 0; i < 6; ++i) {
-      mesh->indices.push_back(nodes[triangleIndicesFlip[i]]->vertexIndex);
+      Octree *targetNode = nodes[quadIndex];
+      Octree *adjacentNodes[2] = {nodes[adjacentNodeIndices[0]], nodes[adjacentNodeIndices[1]]};
+      glm::vec3 offset =
+          adjacentNodes[1]->hermiteP - targetNode->hermiteP +
+              adjacentNodes[0]->hermiteP - targetNode->hermiteP;
+      offset *= 0.05f;
+      glm::vec3 normal;
+      g->normal(targetNode->hermiteP + offset, normal);
+      if (glm::dot(normal, targetNode->hermiteN) < std::cos(glm::radians(15.f)) ) {
+        mesh->indices.push_back(static_cast<unsigned int>(mesh->positions.size()));
+        mesh->positions.push_back(targetNode->hermiteP);
+        mesh->normals.push_back(normal);
+      } else {
+        mesh->indices.push_back(targetNode->vertexIndex);
+      }
     }
   }
-
 }
 
 void Octree::collapse(Topology *g) {
@@ -325,7 +339,7 @@ void Octree::collapse(Topology *g) {
   }
 }
 
-void Octree::calHermite(Octree* node, QefSolver& qef, Topology* g) {
+void Octree::calHermite(Octree *node, QefSolver &qef, Topology *g) {
   auto &p = node->hermiteP;
   qef.solve(p, node->error);
   auto &min = node->min;
