@@ -5,6 +5,8 @@
 #include <glm/glm.hpp>
 #include "Qef.h"
 
+#include <iostream>
+
 #define SVD_NUM_SWEEPS 5
 
 const float Tiny_Number = 1.e-8;
@@ -187,5 +189,8 @@ void QefSolver::solve(glm::vec3 &hermiteP, float &error) {
   glm::vec3 _ATb = ATb - svd_vmul_sym(ATA, massPoint);
   hermiteP = svd_solve_ATA_ATb(ATA, _ATb);
   error = qef_calc_error(ATA, hermiteP, _ATb, btb);
+  if (error != 0.f) {
+    std:: cout << "error:"  << error << std::endl;
+  }
   hermiteP += massPoint;
 }

@@ -3,6 +3,7 @@
 //
 #include <glm/glm.hpp>
 #include <Mesh.h>
+#include <iostream>
 #include "Octree.h"
 
 using namespace glm;
@@ -156,17 +157,20 @@ void Octree::uniformSimplify(Octree *root, float threshold, Topology *geometry, 
     return;
   }
   QefSolver sum;
+  float errorSum = 0.f;
   for (auto &child : root->children) {
     uniformSimplify(child, threshold, geometry, count);
     if (child) {
       sum.combine(child->qef);
+      errorSum += child->error;
     }
   }
   vec3 tempP;
-  float sumError;
-  sum.solve(tempP, sumError);
+  sum.solve(tempP, root->error);
+  root->error = max(root->error, errorSum);
   root->qef.set(sum);
-  if (sumError > threshold) {
+  if (root->error > threshold) {
+    std::cout << "encounter threshold" << std::endl;
   } else {
     // getSelfQef(root, geometry, root->qef);
     calHermite(root, sum, geometry);

@@ -121,6 +121,8 @@ void press(GLFWwindow* window, int button, int action, int mods) {
   }
 }
 
+
+
 int main() {
   if (!glfwInit()) {
     return -1;
@@ -163,7 +165,7 @@ int main() {
   GLuint normalsBuffer;
   GLuint indicesBuffer;
   // Heart g1(5.0f, vec3());
-  AABB g1(vec3(-3), vec3(3));
+  AABB g1(vec3(-3, -3, -0.2), vec3(3, 3, 0.2));
   Sphere g2(4.f, vec3(4));
   // Union g(&g1, &g2);
   // Intersection g(&g1, &g2);
@@ -172,10 +174,10 @@ int main() {
   float area = 15.f;
   int losslessCull = 0;
   int lossyCull = 0;
-  Octree* octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 6, &g, losslessCull);
-  Octree::uniformSimplify(octree, 1e-15, &g, lossyCull);
+  Octree* octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 6, &g1, losslessCull);
+  Octree::uniformSimplify(octree, 1e-13, &g1, lossyCull);
 
-  Mesh* mesh = Octree::generateMesh(octree, &g);
+  Mesh* mesh = Octree::generateMesh(octree, &g1);
   cout << "triangle count: " << mesh->positions.size() << endl;
   cout << "lossless cull: " << losslessCull << endl;
   cout << "lossy cull: " << lossyCull << endl;
