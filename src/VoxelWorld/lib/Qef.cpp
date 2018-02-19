@@ -5,8 +5,6 @@
 #include <glm/glm.hpp>
 #include "Qef.h"
 
-#include <iostream>
-
 #define SVD_NUM_SWEEPS 5
 
 const float Tiny_Number = 1.e-8;
@@ -20,8 +18,8 @@ glm::vec3 svd_vmul_sym(const glm::mat3x3 &a, const glm::vec3 &v) {
 }
 
 float qef_calc_error(const glm::mat3x3& A, const glm::vec3& x, const glm::vec3& ATb, const float btb) {
-  glm::vec3 vtmp = ATb - svd_vmul_sym(A, x);
-  return glm::dot(vtmp, vtmp);
+  glm::vec3 atax = svd_vmul_sym(A, x);
+  return glm::dot(x, atax) - 2 * glm::dot(x, ATb) + btb;
 }
 
 void svd_rotate_xy(float &x, float &y, float c, float s) {
@@ -184,13 +182,12 @@ void QefSolver::add(const glm::vec3 &p, const glm::vec3 &n) {
   massPointSum += p;
 }
 
+
+
 void QefSolver::solve(glm::vec3 &hermiteP, float &error) {
   glm::vec3 massPoint = massPointSum / (float) pointCount;
   glm::vec3 _ATb = ATb - svd_vmul_sym(ATA, massPoint);
   hermiteP = svd_solve_ATA_ATb(ATA, _ATb);
-  error = qef_calc_error(ATA, hermiteP, _ATb, btb);
-  if (error != 0.f) {
-    std:: cout << "error:"  << error << std::endl;
-  }
   hermiteP += massPoint;
+  error = qef_calc_error(ATA, hermiteP, ATb, btb);
 }

@@ -3,7 +3,6 @@
 //
 #include <glm/glm.hpp>
 #include <Mesh.h>
-#include <iostream>
 #include "Octree.h"
 
 using namespace glm;
@@ -149,7 +148,7 @@ Octree *Octree::losslessCompress(Octree *root, float threshold, Topology *topolo
   return root;
 }
 
-void Octree::uniformSimplify(Octree *root, float threshold, Topology *geometry, int &count) {
+void Octree::simplify(Octree *root, float threshold, Topology *geometry, int &count) {
   if (!root) {
     return;
   }
@@ -157,21 +156,16 @@ void Octree::uniformSimplify(Octree *root, float threshold, Topology *geometry, 
     return;
   }
   QefSolver sum;
-  float errorSum = 0.f;
   for (auto &child : root->children) {
-    uniformSimplify(child, threshold, geometry, count);
+    simplify(child, threshold, geometry, count);
     if (child) {
       sum.combine(child->qef);
-      errorSum += child->error;
     }
   }
   vec3 tempP;
   sum.solve(tempP, root->error);
-  root->error = max(root->error, errorSum);
   root->qef.set(sum);
-  if (root->error > threshold) {
-    std::cout << "encounter threshold" << std::endl;
-  } else {
+  if (root->error < threshold) {
     // getSelfQef(root, geometry, root->qef);
     calHermite(root, sum, geometry);
     count++;
@@ -183,6 +177,34 @@ void Octree::uniformSimplify(Octree *root, float threshold, Topology *geometry, 
   }
 }
 
+void Octree::compress(Octree *root, float threshold, Topology *geometry, int &count) {
+  if (!root) {
+    return;
+  }
+  if (root->isLeaf) {
+    return;
+  }
+  QefSolver sum;
+  for (auto &child : root->children) {
+    compress(child, threshold, geometry, count);
+    if (child) {
+      sum.combine(child->qef);
+    }
+  }
+  vec3 tempP;
+  sum.solve(tempP, root->error);
+  root->qef.set(sum);
+  if (root->error < threshold / pow(root->size, 3)) {
+    // getSelfQef(root, geometry, root->qef);
+    calHermite(root, sum, geometry);
+    count++;
+    for (auto &child: root->children) {
+      delete child;
+      child = nullptr;
+    }
+    root->isLeaf = true;
+  }
+}
 Mesh *Octree::generateMesh(Octree *root, Topology *geometry) {
   assert(root);
   auto *mesh = new Mesh();
@@ -321,7 +343,7 @@ void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g) {
       offset *= 0.05f;
       glm::vec3 normal;
       g->normal(targetNode->hermiteP + offset, normal);
-      if (glm::dot(normal, targetNode->hermiteN) < std::cos(glm::radians(15.f)) ) {
+      if (glm::dot(normal, targetNode->hermiteN) < std::cos(glm::radians(90.f)) ) {
         mesh->indices.push_back(static_cast<unsigned int>(mesh->positions.size()));
         mesh->positions.push_back(targetNode->hermiteP);
         mesh->normals.push_back(normal);

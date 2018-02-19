@@ -164,22 +164,25 @@ int main() {
   GLuint positionsBuffer;
   GLuint normalsBuffer;
   GLuint indicesBuffer;
-  // Heart g1(5.0f, vec3());
-  AABB g1(vec3(-3, -3, -0.2), vec3(3, 3, 0.2));
-  Sphere g2(4.f, vec3(4));
+  Sphere g1(5.0f, vec3());
+  // AABB g1(vec3(-3, -3, -0.5), vec3(3, 3, 0.5));
+  AABB g2(vec3(0), vec3(8));
   // Union g(&g1, &g2);
   // Intersection g(&g1, &g2);
   Difference g(&g1, &g2);
 
   float area = 15.f;
-  int losslessCull = 0;
+  int svoCull = 0;
   int lossyCull = 0;
-  Octree* octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 6, &g1, losslessCull);
-  Octree::uniformSimplify(octree, 1e-13, &g1, lossyCull);
+  Octree* octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 7, &g, svoCull);
+  Octree::simplify(octree, 1e1, &g, lossyCull);
 
-  Mesh* mesh = Octree::generateMesh(octree, &g1);
-  cout << "triangle count: " << mesh->positions.size() << endl;
-  cout << "lossless cull: " << losslessCull << endl;
+  Mesh* mesh = Octree::generateMesh(octree, &g);
+  cout.setf(ios::scientific);
+  cout << "max error:" << octree->getError() << endl;
+  cout << "triangle count: " << mesh->indices.size() / 3 << endl;
+  cout << "vertex count: " << mesh->positions.size() / 3 << endl;
+  cout << "SVO cull: " << svoCull << endl;
   cout << "lossy cull: " << lossyCull << endl;
   // mesh->generateFlatNormals();
 

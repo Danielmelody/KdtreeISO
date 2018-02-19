@@ -16,9 +16,13 @@ public:
                                    int depth,
                                    Topology *topology,
                                    int &loselessCut);
-  static void uniformSimplify(Octree *root, float threshold, Topology *geometry, int &count);
+  static void simplify(Octree *root, float threshold, Topology *geometry, int &count);
+  static void compress(Octree *root, float threshold, Topology *geometry, int &count);
+
 
   static Mesh *generateMesh(Octree *root, Topology *geometry);
+  float getError() { return error; }
+  float getAdaptiveError() { return error / (size * size * size); }
   void collapse(Topology *g);
   Octree(glm::vec3 min, float size, int depth) :
       isLeaf(false),
