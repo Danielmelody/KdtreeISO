@@ -42,6 +42,7 @@ const char *frag =
         "\n"
         "void main() {\n"
         "    color = albedo * max(dot(fragNormal, lightDir), 0.2f);\n"
+        "    // color = (1.0 - albedo) * (step(dot(fragNormal,vec3(0, 0, -1)), 0.0) * 0.8 + 0.2);\n"
         "}";
 
 float cameraOffset = 20.f;
@@ -50,6 +51,7 @@ double previousCursorY = 0.f;
 float rotateX = 0.f;
 float rotateY = 0.f;
 bool pressing = false;
+bool inited = false;
 
 void addMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint &indicesBuffer) {
   glGenBuffers(1, &positionsBuffer);
@@ -62,10 +64,13 @@ void addMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint 
 
   glGenBuffers(1, &indicesBuffer);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesBuffer);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->indices.size() * sizeof(unsigned int), &(mesh->indices[0]), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+               mesh->indices.size() * sizeof(unsigned int),
+               &(mesh->indices[0]),
+               GL_STATIC_DRAW);
 }
 
-void drawMesh(Mesh *mesh, GLuint& positionsBuffer, GLuint& normalsBuffer, GLuint& indicesBuffer) {
+void drawMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint &indicesBuffer, Program &p) {
   glEnableVertexAttribArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, positionsBuffer);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
@@ -75,8 +80,16 @@ void drawMesh(Mesh *mesh, GLuint& positionsBuffer, GLuint& normalsBuffer, GLuint
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 0, nullptr);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesBuffer);
-  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  p.setVec3("albedo", glm::vec3(1, 1, 1));
+
+  glLineWidth(200.f);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
+
+  p.setVec3("albedo", glm::vec3(1, 0, 0));
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
+
 
   glDisableVertexAttribArray(0);
   glDisableVertexAttribArray(1);
@@ -93,8 +106,7 @@ void setUniforms(Program &program) {
   program.setVec3("lightDir", normalize(vec3(0.f, 0.f, 1.f)));
 }
 
-void error(int error, const char* description)
-{
+void error(int error, const char *description) {
   cerr << error << ": " << description << endl;
 }
 
@@ -109,9 +121,10 @@ void mouseInput(GLFWwindow *window, double x, double y) {
 
 void scroll(GLFWwindow *window, double dx, double dy) {
   cameraOffset -= 0.2 * dy;
+  pressing = true;
 }
 
-void press(GLFWwindow* window, int button, int action, int mods) {
+void press(GLFWwindow *window, int button, int action, int mods) {
   if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
     pressing = true;
     glfwGetCursorPos(window, &previousCursorX, &previousCursorY);
@@ -120,8 +133,6 @@ void press(GLFWwindow* window, int button, int action, int mods) {
     pressing = false;
   }
 }
-
-
 
 int main() {
   if (!glfwInit()) {
@@ -161,23 +172,26 @@ int main() {
   glGenVertexArrays(1, &VertexArrayID);
   glBindVertexArray(VertexArrayID);
 
+  GLfloat lineWidthRange[2] = {0.0f, 0.0f};
+  glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
+
   GLuint positionsBuffer;
   GLuint normalsBuffer;
   GLuint indicesBuffer;
-  Sphere g1(5.0f, vec3());
-  // AABB g1(vec3(-3, -3, -0.5), vec3(3, 3, 0.5));
-  AABB g2(vec3(0), vec3(8));
-  // Union g(&g1, &g2);
+  Sphere g(3.f, vec3(0));
+//  AABB g(vec3(-3, -3, -5), vec3(2, 4, -1));
+//  AABB g2(vec3(-1, -3, -3), vec3(1, 3, 3));
+//  Union g(&g1, &g2);
   // Intersection g(&g1, &g2);
-  Difference g(&g1, &g2);
+  // Difference g(&g1, &g2);
 
   float area = 15.f;
   int svoCull = 0;
   int lossyCull = 0;
-  Octree* octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 7, &g, svoCull);
-  Octree::simplify(octree, 1e1, &g, lossyCull);
+  Octree *octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 6, &g, svoCull);
+  // Octree::simplify(octree, 1e1, &g, lossyCull);
 
-  Mesh* mesh = Octree::generateMesh(octree, &g);
+  Mesh *mesh = Octree::generateMesh(octree, &g);
   cout.setf(ios::scientific);
   cout << "max error:" << octree->getError() << endl;
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
@@ -192,22 +206,22 @@ int main() {
     return -1;
   }
 
-
-
   addMesh(mesh, positionsBuffer, normalsBuffer, indicesBuffer);
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-
+  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
   while (!glfwWindowShouldClose(window)) {
-     glfwPollEvents();
-     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-     program.use();
-     setUniforms(program);
-     drawMesh(mesh, positionsBuffer, normalsBuffer, indicesBuffer);
-     glfwSwapBuffers(window);
+    glfwPollEvents();
+    if (pressing || !inited) {
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      program.use();
+      setUniforms(program);
+      drawMesh(mesh, positionsBuffer, normalsBuffer, indicesBuffer, program);
+      glfwSwapBuffers(window);
+      inited = true;
+    }
   }
 
   delete mesh;
@@ -215,7 +229,7 @@ int main() {
   glDeleteBuffers(1, &positionsBuffer);
   glDeleteBuffers(1, &normalsBuffer);
   glDeleteBuffers(1, &indicesBuffer);
-  // delete octree;
+  delete octree;
   glfwTerminate();
   return 0;
 }

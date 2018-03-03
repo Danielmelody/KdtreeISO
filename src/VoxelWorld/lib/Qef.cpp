@@ -150,7 +150,9 @@ void QefSolver::set(const QefSolver &other) {
   ATb = other.ATb;
   btb = other.btb;
   massPointSum = other.massPointSum;
+  averageNormalSum = other.averageNormalSum;
   pointCount = other.pointCount;
+  calRoughness();
 }
 
 void QefSolver::combine(const QefSolver &other) {
@@ -166,6 +168,8 @@ void QefSolver::combine(const QefSolver &other) {
   btb += other.btb;
   massPointSum += other.massPointSum;
   pointCount += other.pointCount;
+  averageNormalSum += other.averageNormalSum;
+  calRoughness();
 }
 
 void QefSolver::add(const glm::vec3 &p, const glm::vec3 &n) {
@@ -180,11 +184,15 @@ void QefSolver::add(const glm::vec3 &p, const glm::vec3 &n) {
   btb += dotp * dotp;
   pointCount++;
   massPointSum += p;
+  averageNormalSum += n;
 }
 
-
+void QefSolver::calRoughness() {
+  roughness = 1.f - glm::length(averageNormalSum) / (float)pointCount;
+}
 
 void QefSolver::solve(glm::vec3 &hermiteP, float &error) {
+  calRoughness();
   glm::vec3 massPoint = massPointSum / (float) pointCount;
   glm::vec3 _ATb = ATb - svd_vmul_sym(ATA, massPoint);
   hermiteP = svd_solve_ATA_ATb(ATA, _ATb);

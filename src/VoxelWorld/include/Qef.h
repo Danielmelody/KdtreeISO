@@ -12,13 +12,23 @@ struct QefSolver {
   glm::vec3 ATb;
   float btb;
   glm::vec3 massPointSum;
+  glm::vec3 averageNormalSum;
+  float roughness;
   int pointCount;
 
-  void set(const QefSolver& other);
-  void combine(const QefSolver& other);
-  void add(const glm::vec3& p, const glm::vec3& n);
-  void solve(glm::vec3 &hermiteP, float& error);
-  QefSolver():ATA(glm::mat4(0.0)), ATb(glm::vec3(0.0)), btb(0.f), massPointSum(glm::vec3(0.f)), pointCount(0) {}
+  void set(const QefSolver &other);
+  void combine(const QefSolver &other);
+  void add(const glm::vec3 &p, const glm::vec3 &n);
+  void solve(glm::vec3 &hermiteP, float &error);
+  void calRoughness();
+  QefSolver()
+      : ATA(glm::mat4(0.0)),
+        ATb(glm::vec3(0.0)),
+        btb(0.f),
+        massPointSum(glm::vec3(0.f)),
+        averageNormalSum(glm::vec3(0.f)),
+        roughness(0.f),
+        pointCount(0) {}
 };
 
 #endif //VOXELWORLD_QEF_H
