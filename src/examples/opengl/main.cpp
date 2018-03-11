@@ -80,9 +80,8 @@ void drawMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 0, nullptr);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesBuffer);
-  p.setVec3("albedo", glm::vec3(1, 1, 1));
 
-  glLineWidth(200.f);
+  p.setVec3("albedo", glm::vec3(1, 1, 1));
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
 
@@ -178,26 +177,34 @@ int main() {
   GLuint positionsBuffer;
   GLuint normalsBuffer;
   GLuint indicesBuffer;
-  Sphere g(3.f, vec3(0));
-//  AABB g(vec3(-3, -3, -5), vec3(2, 4, -1));
-//  AABB g2(vec3(-1, -3, -3), vec3(1, 3, 3));
-//  Union g(&g1, &g2);
+  // Sphere g1(3.f, vec3(1.5, 0, 0));
+  // AABB g1(vec3(-6, -6, -2.5), vec3(6, 6, -1.9));
+  AABB g(vec3(-3, -3, -0.5), vec3(3, 3, 0.5));
+  // AABB g(vec3(1.7, -3, -3), vec3(2.3, 3, 3));
+  //Union gu(&g1, &g2);
+  // Union g(&g1, &g2);
   // Intersection g(&g1, &g2);
   // Difference g(&g1, &g2);
 
   float area = 15.f;
   int svoCull = 0;
-  int lossyCull = 0;
-  Octree *octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), area, 6, &g, svoCull);
-  // Octree::simplify(octree, 1e1, &g, lossyCull);
+  int edgeSimplifyCount = 0;
+  int faceCount = 0;
+  auto octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), vec3(area), 7, &g, svoCull);
+  // Octree::simplify(octree, 1e-2, &g, lossyCull);
+  for (int i = 0; i < 1; ++i) {
+    int last = edgeSimplifyCount;
+    Octree::edgeSimplify(octree, 100, &g, edgeSimplifyCount);
+    cout << i + 1 << " st edge simplify : " << edgeSimplifyCount - last << endl;
+  }
 
-  Mesh *mesh = Octree::generateMesh(octree, &g);
+
+
+  Mesh *mesh = Octree::generateMesh(octree, &g, faceCount);
   cout.setf(ios::scientific);
   cout << "max error:" << octree->getError() << endl;
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
   cout << "vertex count: " << mesh->positions.size() / 3 << endl;
-  cout << "SVO cull: " << svoCull << endl;
-  cout << "lossy cull: " << lossyCull << endl;
   // mesh->generateFlatNormals();
 
   Program program;
@@ -229,7 +236,6 @@ int main() {
   glDeleteBuffers(1, &positionsBuffer);
   glDeleteBuffers(1, &normalsBuffer);
   glDeleteBuffers(1, &indicesBuffer);
-  delete octree;
   glfwTerminate();
   return 0;
 }

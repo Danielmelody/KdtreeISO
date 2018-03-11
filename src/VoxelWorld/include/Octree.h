@@ -10,24 +10,37 @@
 #include "Qef.h"
 #include <vector>
 #include <unordered_set>
+#include <memory>
 
 class Octree {
 public:
-  static Octree *buildWithTopology(glm::vec3 min,
-                                   float size,
-                                   int depth,
-                                   Topology *topology,
-                                   int &loselessCut);
-  static void simplify(Octree *root, float threshold, Topology *geometry, int &count);
-  static void compress(Octree *root, float threshold, Topology *geometry, int &count);
+  static std::shared_ptr<Octree> buildWithTopology(glm::vec3 min,
+                                                   glm::vec3 size,
+                                                   int depth,
+                                                   Topology *topology,
+                                                   int &loselessCut);
+  static void simplify(std::shared_ptr<Octree> root, float threshold, Topology *geometry, int &count);
+  static std::shared_ptr<Octree> edgeSimplify(std::shared_ptr<Octree> root,
+                                              float threshold,
+                                              Topology *geometry,
+                                              int &count);
+  static void edgeCollapse(std::shared_ptr<Octree> &a,
+                           std::shared_ptr<Octree> &b,
+                           int dir,
+                           float threshold,
+                           Topology *geometry,
+                           glm::vec3 faceMin,
+                           float faceSize,
+                           int &count);
+  static void compress(std::shared_ptr<Octree> root, float threshold, Topology *geometry, int &count);
 
-  static Mesh *generateMesh(Octree *root, Topology *geometry);
+  static Mesh *generateMesh(std::shared_ptr<Octree> root, Topology *geometry, int &count);
   float getError() { return error; }
-  float getAdaptiveError() { return error / (size * size * size); }
+  // float getAdaptiveError() { return error / (size * size * size); }
   void collapse(Topology *g);
-  Octree(glm::vec3 min, float size, int depth) :
-      parent(nullptr),
+  Octree(glm::vec3 min, glm::vec3 size, int depth) :
       childIndex(-1),
+      hasEdgeCollapse(false),
       isLeaf(false),
       internal(false),
       min(min),
@@ -37,38 +50,41 @@ public:
       children[i] = nullptr;
     }
   };
-  ~Octree() {
-    for (int i = 0; i < 8; ++i) {
-      delete children[i];
-    }
-  };
 protected:
-  static void contourCell(Octree *root, Mesh *mesh, Topology *geometry);
-  static void contourFace(Octree *nodes[2], int dir, Mesh *mesh, Topology *geometry);
-  static void contourEdge(Octree *nodes[4], int dir, Mesh *mesh, Topology *geometry);
-  static void generateVertexIndices(Octree *node, Mesh *mesh, Topology *geometry);
-  static bool findFeatureNodes(Octree *node,
-                               std::vector<Octree *> &results,
+  static void contourCell(std::shared_ptr<Octree> root, Mesh *mesh, Topology *geometry, int &count);
+  static void contourFace(std::shared_ptr<Octree> nodes[2], int dir, Mesh *mesh, Topology *geometry, int &count);
+  static void contourEdge(std::shared_ptr<Octree> nodes[4], int dir, Mesh *mesh, Topology *geometry);
+  static void combine(std::shared_ptr<Octree> &a,
+                      std::shared_ptr<Octree> &b,
+                      const QefSolver &combination,
+                      glm::vec3 combinePos,
+                      int &count);
+  static void generateVertexIndices(std::shared_ptr<Octree> node, Mesh *mesh, Topology *geometry);
+  static bool findFeatureNodes(std::shared_ptr<Octree> node,
+                               std::vector<std::shared_ptr<Octree>> &results,
                                const int cornerDir,
                                bool subdivision,
                                const glm::vec3 &edgeP,
                                const glm::vec3 &normal);
-  static void generateQuad(Octree **nodes, int dir, Mesh *mesh, Topology *g);
-  static void generatePolygons(Octree **nodes, int dir, Mesh *mesh, Topology *g);
+  static bool intersectWithBrothers(int cornerDir, std::shared_ptr<Octree> node);
+  static void generateQuad(std::shared_ptr<Octree> *nodes, int dir, Mesh *mesh, Topology *g);
+  static void generatePolygons(std::shared_ptr<Octree> *nodes, int dir, Mesh *mesh, Topology *g);
   static bool getSelfQef(Octree *node, Topology *geometry, QefSolver &qef);
-  static Octree *buildRecursively(glm::vec3 min, float size, int depth, Topology *geometry);
-  static Octree *losslessCompress(Octree *root, float threshold, Topology *geometry, int &count);
+  static std::shared_ptr<Octree> buildRecursively(glm::vec3 min, glm::vec3 size, int depth, Topology *geometry);
+  static std::shared_ptr<Octree> losslessCompress(std::shared_ptr<Octree> root,
+                                                  float threshold,
+                                                  Topology *geometry,
+                                                  int &count);
 
-  static void calHermite(Octree *node, QefSolver &qef, Topology *g);
-  Octree *parent;
-  Octree *children[8];
-  int8_t childIndex;
+  static void calHermite(Octree* node, QefSolver &qef, Topology *g);
+  std::shared_ptr<Octree> children[8];
+  int childIndex;
   uint8_t cornerSigns[8];
-  std::unordered_set<Octree *> connections;
+  bool hasEdgeCollapse;
   bool isLeaf;
   bool internal;
   glm::vec3 min;
-  float size;
+  glm::vec3 size;
   int depth;
   QefSolver qef;
   float error;
