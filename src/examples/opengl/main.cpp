@@ -89,7 +89,6 @@ void drawMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
 
-
   glDisableVertexAttribArray(0);
   glDisableVertexAttribArray(1);
 }
@@ -177,32 +176,30 @@ int main() {
   GLuint positionsBuffer;
   GLuint normalsBuffer;
   GLuint indicesBuffer;
-  // Sphere g1(3.f, vec3(1.5, 0, 0));
+  Sphere g1(3.f, vec3(0, 0, 1));
   // AABB g1(vec3(-6, -6, -2.5), vec3(6, 6, -1.9));
-  AABB g(vec3(-3, -3, -0.5), vec3(3, 3, 0.5));
+  AABB g2(vec3(-3, -3, -3.3), vec3(3, 3, -2.7));
   // AABB g(vec3(1.7, -3, -3), vec3(2.3, 3, 3));
   //Union gu(&g1, &g2);
-  // Union g(&g1, &g2);
+  Union g(&g1, &g2);
   // Intersection g(&g1, &g2);
   // Difference g(&g1, &g2);
 
   float area = 15.f;
   int svoCull = 0;
-  int edgeSimplifyCount = 0;
   int faceCount = 0;
   auto octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), vec3(area), 7, &g, svoCull);
   // Octree::simplify(octree, 1e-2, &g, lossyCull);
-  for (int i = 0; i < 1; ++i) {
-    int last = edgeSimplifyCount;
-    Octree::edgeSimplify(octree, 100, &g, edgeSimplifyCount);
-    cout << i + 1 << " st edge simplify : " << edgeSimplifyCount - last << endl;
-  }
 
+  int edgeSimplifyCount = 0;
+  int last = edgeSimplifyCount;
+  Octree::edgeSimplify(octree, 3e-3, &g, edgeSimplifyCount);
+  cout << "edge simplify : " << edgeSimplifyCount - last << endl;
 
-
+  auto *octreeVisual = new Mesh();
+  Octree::drawOctrees(octree.get(), octreeVisual);
   Mesh *mesh = Octree::generateMesh(octree, &g, faceCount);
   cout.setf(ios::scientific);
-  cout << "max error:" << octree->getError() << endl;
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
   cout << "vertex count: " << mesh->positions.size() / 3 << endl;
   // mesh->generateFlatNormals();
@@ -232,6 +229,7 @@ int main() {
   }
 
   delete mesh;
+  delete octreeVisual;
 
   glDeleteBuffers(1, &positionsBuffer);
   glDeleteBuffers(1, &normalsBuffer);
