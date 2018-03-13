@@ -42,7 +42,7 @@ public:
   static void compress(std::shared_ptr<Octree> root, float threshold, Topology *geometry, int &count);
 
   static Mesh *generateMesh(std::shared_ptr<Octree> root, Topology *geometry, int &count);
-  static void drawOctrees(Octree *root, Mesh* mesh);
+  static void drawOctrees(Octree *root, Mesh* mesh, std::unordered_set<Octree*>& visited);
   float getError() { return error; }
   // float getAdaptiveError() { return error / (size * size * size); }
   void collapse(Topology *g);
@@ -58,6 +58,8 @@ public:
     }
     cluster = new std::vector<std::shared_ptr<Octree>*>();
     clusterQef = new QefSolver();
+    clusterMin = &(this->min);
+    clusterSize = &(this->size);
   };
 protected:
   static void contourCell(Octree* root, Mesh *mesh, Topology *geometry, int &count);
@@ -93,6 +95,8 @@ protected:
   bool internal;
   glm::vec3 min;
   glm::vec3 size;
+  glm::vec3 *clusterMin;
+  glm::vec3 *clusterSize;
   int depth;
   QefSolver qef;
   QefSolver *clusterQef;

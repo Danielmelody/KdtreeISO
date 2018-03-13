@@ -214,10 +214,8 @@ std::shared_ptr<Octree> Octree::buildRecursively(glm::vec3 min, vec3 size, int d
     return root;
   }
   for (int i = 0; i < 8; ++i) {
-    long count = root->children[i].use_count();
     root->children[i] =
         buildRecursively(min + min_offset_subdivision(i) * size / 2.f, size / 2.f, depth - 1, topology);
-    count = root->children[i].use_count();
     root->cornerSigns[i] = root->children[i]->cornerSigns[i];
     root->children[i]->childIndex = static_cast<int8_t>(i);
     root->children[i]->cluster->push_back(&(root->children[i]));
@@ -360,7 +358,7 @@ void Octree::edgeCluster(std::shared_ptr<Octree> root,
     return;
   }
   if (root->isLeaf) {
-    count += std::max(0, (int)root->cluster->size() - 1);
+    count += std::max(0, (int) root->cluster->size() - 1);
     while (!root->cluster->empty()) {
       *(root->cluster->back()) = root;
       root->cluster->pop_back();
@@ -577,14 +575,6 @@ void Octree::contourEdge(Octree *nodes[4], int dir, Mesh *mesh, Topology *geomet
 
 void Octree::combine(std::shared_ptr<Octree> &a, std::shared_ptr<Octree> &b, Topology *g) {
 
-  vec3 amax = a->size + a->min;
-  vec3 bmax = b->size + b->min;
-
-  vec3 abmax = glm::max(amax, bmax);
-  vec3 abmin = glm::min(a->min, b->min);
-  a->min = abmin;
-  a->size = abmax - abmin;
-
   auto bigger = a;
   auto smaller = b;
 
@@ -594,10 +584,21 @@ void Octree::combine(std::shared_ptr<Octree> &a, std::shared_ptr<Octree> &b, Top
   }
   bigger->cluster->insert(bigger->cluster->end(), smaller->cluster->begin(), smaller->cluster->end());
   bigger->clusterQef->combine(*smaller->clusterQef);
+
+  vec3 biggerMax = *bigger->clusterSize + *bigger->clusterMin;
+  vec3 smallerMax = *smaller->clusterSize + *smaller->clusterMin;
+
+  vec3 combineMax = glm::max(biggerMax, smallerMax);
+  vec3 combineMin = glm::min(*bigger->clusterMin, *smaller->clusterMin);
+  *bigger->clusterMin = combineMin;
+  *bigger->clusterSize = combineMax - combineMin;
+
   // calHermite(bigger.get(), bigger->clusterQef, g);
   for (auto oct : *(smaller->cluster)) {
     (*oct)->cluster = bigger->cluster;
     (*oct)->clusterQef = bigger->clusterQef;
+    (*oct)->clusterMin = bigger->clusterMin;
+    (*oct)->clusterSize = bigger->clusterSize;
     // (*oct)->hermiteP = bigger->hermiteP;
   }
 //  delete smaller->cluster;
@@ -763,14 +764,23 @@ void Octree::detectSharpTriangles(Octree *nodes[3], Mesh *mesh, Topology *g) {
   }
 }
 
-void Octree::drawOctrees(Octree *root, Mesh *mesh) {
+void Octree::drawOctrees(Octree *root, Mesh *mesh, std::unordered_set<Octree*>& visited) {
   if (!root) {
     return;
   }
   if (root->isLeaf) {
+    if (visited.find(root) != visited.end()) {
+      return;
+    }
+    visited.insert(root);
     for (int i = 0; i < 12; ++i) {
-      auto a = min_offset_subdivision(cellProcFaceMask[i][0]) * root->size + root->min;
-      auto b = min_offset_subdivision(cellProcFaceMask[i][1]) * root->size + root->min;
+      auto a = min_offset_subdivision(cellProcFaceMask[i][0]) * (*root->clusterSize) + (*root->clusterMin);
+      auto b = min_offset_subdivision(cellProcFaceMask[i][1]) * (*root->clusterSize) + (*root->clusterMin);
+//      auto a = min_offset_subdivision(cellProcFaceMask[i][0]) * (root->size) + (root->min);
+//      auto b = min_offset_subdivision(cellProcFaceMask[i][1]) * (root->size) + (root->min);
+
+
+
       auto na = normalize(min_offset_subdivision(cellProcFaceMask[i][0]) - vec3(0.5f));
       auto nb = normalize(min_offset_subdivision(cellProcFaceMask[i][1]) - vec3(0.5f));
 
@@ -787,7 +797,7 @@ void Octree::drawOctrees(Octree *root, Mesh *mesh) {
     return;
   }
   for (int i = 0; i < 8; ++i) {
-    drawOctrees(root->children[i].get(), mesh);
+    drawOctrees(root->children[i].get(), mesh, visited);
   }
 }
 

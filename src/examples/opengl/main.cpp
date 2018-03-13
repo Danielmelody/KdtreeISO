@@ -2,6 +2,7 @@
 // Created by Danielhu on 2018/1/16.
 //
 #include <iostream>
+#include <unordered_set>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -70,7 +71,7 @@ void addMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint 
                GL_STATIC_DRAW);
 }
 
-void drawMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint &indicesBuffer, Program &p) {
+void drawMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint &indicesBuffer, Program &p, bool shaded, bool wireframe) {
   glEnableVertexAttribArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, positionsBuffer);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
@@ -81,13 +82,17 @@ void drawMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesBuffer);
 
-  p.setVec3("albedo", glm::vec3(1, 1, 1));
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
+  if (wireframe) {
+    p.setVec3("albedo", glm::vec3(1, 1, 1));
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
+  }
 
-  p.setVec3("albedo", glm::vec3(1, 0, 0));
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
+  if (shaded) {
+    p.setVec3("albedo", glm::vec3(1, 0, 0));
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
+  }
 
   glDisableVertexAttribArray(0);
   glDisableVertexAttribArray(1);
@@ -173,9 +178,9 @@ int main() {
   GLfloat lineWidthRange[2] = {0.0f, 0.0f};
   glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
 
-  GLuint positionsBuffer;
-  GLuint normalsBuffer;
-  GLuint indicesBuffer;
+  GLuint positionsBuffers[2];
+  GLuint normalsBuffers[2];
+  GLuint indicesBuffers[2];
   Sphere g1(3.f, vec3(0, 0, 1));
   // AABB g1(vec3(-6, -6, -2.5), vec3(6, 6, -1.9));
   AABB g2(vec3(-3, -3, -3.3), vec3(3, 3, -2.7));
@@ -196,8 +201,10 @@ int main() {
   Octree::edgeSimplify(octree, 3e-3, &g, edgeSimplifyCount);
   cout << "edge simplify : " << edgeSimplifyCount - last << endl;
 
+
   auto *octreeVisual = new Mesh();
-  Octree::drawOctrees(octree.get(), octreeVisual);
+  unordered_set<Octree*> visualUtil;
+  Octree::drawOctrees(octree.get(), octreeVisual, visualUtil);
   Mesh *mesh = Octree::generateMesh(octree, &g, faceCount);
   cout.setf(ios::scientific);
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
@@ -210,7 +217,10 @@ int main() {
     return -1;
   }
 
-  addMesh(mesh, positionsBuffer, normalsBuffer, indicesBuffer);
+  addMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0]);
+  addMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1]);
+
+
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
@@ -222,7 +232,8 @@ int main() {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       program.use();
       setUniforms(program);
-      drawMesh(mesh, positionsBuffer, normalsBuffer, indicesBuffer, program);
+      drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, true);
+      drawMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1], program, false, true);
       glfwSwapBuffers(window);
       inited = true;
     }
@@ -231,9 +242,12 @@ int main() {
   delete mesh;
   delete octreeVisual;
 
-  glDeleteBuffers(1, &positionsBuffer);
-  glDeleteBuffers(1, &normalsBuffer);
-  glDeleteBuffers(1, &indicesBuffer);
+  glDeleteBuffers(1, &positionsBuffers[0]);
+  glDeleteBuffers(1, &normalsBuffers[0]);
+  glDeleteBuffers(1, &indicesBuffers[0]);
+  glDeleteBuffers(1, &positionsBuffers[1]);
+  glDeleteBuffers(1, &normalsBuffers[1]);
+  glDeleteBuffers(1, &indicesBuffers[1]);
   glfwTerminate();
   return 0;
 }
