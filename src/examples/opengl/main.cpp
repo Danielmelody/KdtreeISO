@@ -181,24 +181,25 @@ int main() {
   GLuint positionsBuffers[2];
   GLuint normalsBuffers[2];
   GLuint indicesBuffers[2];
-  Sphere g1(3.f, vec3(0, 0, 1));
+  Sphere g1(3.9f, vec3(0, 0, 0));
   // AABB g1(vec3(-6, -6, -2.5), vec3(6, 6, -1.9));
-  AABB g2(vec3(-3, -3, -3.3), vec3(3, 3, -2.7));
+  AABB g2(vec3(-3, -3, -3), vec3(3, 3, 3));
   // AABB g(vec3(1.7, -3, -3), vec3(2.3, 3, 3));
   //Union gu(&g1, &g2);
-  Union g(&g1, &g2);
+  // Union g(&g1, &g2);
   // Intersection g(&g1, &g2);
-  // Difference g(&g1, &g2);
+  Difference g(&g2, &g1);
 
   float area = 15.f;
   int svoCull = 0;
   int faceCount = 0;
   auto octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), vec3(area), 7, &g, svoCull);
-  // Octree::simplify(octree, 1e-2, &g, lossyCull);
+  // int traditionCount = 0;
+  // Octree::simplify(octree, 1e-2, &g, traditionCount);
 
   int edgeSimplifyCount = 0;
   int last = edgeSimplifyCount;
-  Octree::edgeSimplify(octree, 3e-3, &g, edgeSimplifyCount);
+  Octree::edgeSimplify(octree, 0.01, 1e-5, &g, edgeSimplifyCount);
   cout << "edge simplify : " << edgeSimplifyCount - last << endl;
 
 
@@ -233,7 +234,7 @@ int main() {
       program.use();
       setUniforms(program);
       drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, true);
-      drawMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1], program, false, true);
+      // drawMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1], program, false, true);
       glfwSwapBuffers(window);
       inited = true;
     }
