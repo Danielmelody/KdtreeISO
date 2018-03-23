@@ -12,6 +12,12 @@
 #include <unordered_set>
 #include <memory>
 
+struct Vertex {
+  unsigned int *clusterVertexIndex;
+  glm::vec3 hermiteP;
+  glm::vec3 hermiteN;
+};
+
 class Octree {
 public:
   static std::shared_ptr<Octree> buildWithTopology(glm::vec3 min,
@@ -28,9 +34,12 @@ public:
   static std::shared_ptr<Octree> edgeClassifier(std::shared_ptr<Octree> root,
                                                 float roughnessT,
                                                 float qefT,
+                                                int classifyDir,
                                                 Topology *geometry,
                                                 int &count);
-  static void edgeCluster(std::shared_ptr<Octree> root, Topology *geometry, int &count);
+  static void edgeCluster(std::shared_ptr<Octree> root,
+                          Topology *geometry,
+                          int &count);
   static void edgeCollapse(std::shared_ptr<Octree> &a,
                            std::shared_ptr<Octree> &b,
                            int dir,
@@ -58,8 +67,8 @@ public:
     }
     cluster = new std::vector<std::shared_ptr<Octree> *>();
     clusterQef = new QefSolver();
-    clusterMin = &(this->min);
-    clusterSize = &(this->size);
+    clusterMin = new glm::vec3(this->min);
+    clusterSize = new glm::vec3(this->size);
   };
 protected:
   static void contourCell(Octree *root, Mesh *mesh, Topology *geometry, int &count);
@@ -68,7 +77,10 @@ protected:
   static void combine(std::shared_ptr<Octree> &a,
                       std::shared_ptr<Octree> &b,
                       Topology *g);
-  static void generateVertexIndices(std::shared_ptr<Octree> node, Mesh *mesh, Topology *geometry);
+  static void generateVertexIndices(const std::shared_ptr<Octree> &node,
+                                    Mesh *mesh,
+                                    Topology *geometry,
+                                    std::unordered_set<Octree *> &indexed);
   static bool findFeatureNodes(Octree *node,
                                std::vector<Octree *> &results,
                                const int cornerDir,
@@ -76,9 +88,14 @@ protected:
                                const glm::vec3 &edgeP,
                                const glm::vec3 &normal);
   static bool intersectWithBrothers(int cornerDir, Octree *node);
+  static bool segmentFaceInterssection(const glm::vec3 &va,
+                                       const glm::vec3 &vb,
+                                       const glm::vec3 &min,
+                                       const glm::vec3 max,
+                                       int dir);
   static void generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g);
   static void generatePolygons(Octree *nodes[4], int dir, Mesh *mesh, Topology *g);
-  static void detectSharpTriangles(Octree *nodes[3], Mesh *mesh, Topology *g);
+  static void detectSharpTriangles(Vertex *vertices[3], Mesh *mesh, Topology *g);
   static bool getSelfQef(Octree *node, Topology *geometry, QefSolver &qef);
   static std::shared_ptr<Octree> buildRecursively(glm::vec3 min, glm::vec3 size, int depth, Topology *geometry);
   static std::shared_ptr<Octree> losslessCompress(std::shared_ptr<Octree> root,
@@ -101,9 +118,7 @@ protected:
   QefSolver qef;
   QefSolver *clusterQef;
   float error;
-  unsigned int vertexIndex;
-  glm::vec3 hermiteP;
-  glm::vec3 hermiteN;
+  Vertex vertex;
 };
 
 #endif //VOXELWORLD_OCTREE_H

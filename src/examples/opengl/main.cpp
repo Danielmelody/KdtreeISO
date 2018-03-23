@@ -181,25 +181,25 @@ int main() {
   GLuint positionsBuffers[2];
   GLuint normalsBuffers[2];
   GLuint indicesBuffers[2];
-  Sphere g1(3.9f, vec3(0, 0, 0));
-  // AABB g1(vec3(-6, -6, -2.5), vec3(6, 6, -1.9));
-  AABB g2(vec3(-3, -3, -3), vec3(3, 3, 3));
+  Sphere g1(3, vec3(0, 0, 0));
+  // AABB g1(vec3(-2, -5, -2), vec3(2, 5, 2));
+  AABB g2(vec3(-5, -0.5, -5), vec3(5, 0.5, 5));
   // AABB g(vec3(1.7, -3, -3), vec3(2.3, 3, 3));
   //Union gu(&g1, &g2);
   // Union g(&g1, &g2);
   // Intersection g(&g1, &g2);
   Difference g(&g2, &g1);
 
-  float area = 15.f;
+  float area = 12.f;
   int svoCull = 0;
   int faceCount = 0;
   auto octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), vec3(area), 7, &g, svoCull);
-  // int traditionCount = 0;
-  // Octree::simplify(octree, 1e-2, &g, traditionCount);
+//  int traditionCount = 0;
+//  Octree::simplify(octree, 1e-3, &g, traditionCount);
 
   int edgeSimplifyCount = 0;
   int last = edgeSimplifyCount;
-  Octree::edgeSimplify(octree, 0.01, 1e-5, &g, edgeSimplifyCount);
+  Octree::edgeSimplify(octree, 0.01, 1e-2, &g, edgeSimplifyCount);
   cout << "edge simplify : " << edgeSimplifyCount - last << endl;
 
 
