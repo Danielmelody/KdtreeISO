@@ -16,6 +16,9 @@ struct Vertex {
   unsigned int *clusterVertexIndex;
   glm::vec3 hermiteP;
   glm::vec3 hermiteN;
+//  ~Vertex() {
+//    delete clusterVertexIndex;
+//  }
 };
 
 class Octree {
@@ -70,6 +73,14 @@ public:
     clusterMin = new glm::vec3(this->min);
     clusterSize = new glm::vec3(this->size);
   };
+  ~Octree() {
+//    if (cluster->empty()) {
+//      delete cluster;
+//      delete clusterMin;
+//      delete clusterSize;
+//      delete clusterQef;
+//    }
+  }
 protected:
   static void contourCell(Octree *root, Mesh *mesh, Topology *geometry, int &count);
   static void contourFace(Octree *nodes[2], int dir, Mesh *mesh, Topology *geometry, int &count);

@@ -652,6 +652,12 @@ void Octree::combine(std::shared_ptr<Octree> &a, std::shared_ptr<Octree> &b, Top
   *bigger->clusterMin = combineMin;
   *bigger->clusterSize = combineMax - combineMin;
 
+  auto smCluster = smaller->cluster;
+  auto smClusterQef = smaller->clusterQef;
+  auto smClusterMin = smaller->clusterMin;
+  auto smClusterSize = smaller->clusterSize;
+
+
   for (auto oct : *(smaller->cluster)) {
     (*oct)->cluster = bigger->cluster;
     (*oct)->clusterQef = bigger->clusterQef;
@@ -659,14 +665,10 @@ void Octree::combine(std::shared_ptr<Octree> &a, std::shared_ptr<Octree> &b, Top
     (*oct)->clusterSize = bigger->clusterSize;
     // (*oct)->vertex.hermiteP = bigger->vertex.hermiteP;
   }
-  for (int i = 0; i < 3; ++i) {
-    if (abs(*bigger->clusterMin)[i] > 10.f
-        || abs(*bigger->clusterSize)[i] > 10.f
-        ) { ;
-    }
-  }
-//  delete smaller->cluster;
-//  delete smaller->clusterQef;
+  delete smCluster;
+  delete smClusterQef;
+  delete smClusterMin;
+  delete smClusterSize;
 }
 
 bool Octree::intersectWithBrothers(int cornerDir, Octree *node) {
@@ -780,7 +782,7 @@ void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g) {
   if (polygons.size() < 3) {
     return;
   }
-  Vertex *faceVertices[4];
+  Vertex *faceVertices[4] = {nullptr, nullptr, nullptr, nullptr};
   int sameCellIndex[2] = {2, 3};
   for (int i = 0; i < 4; ++i) {
     int testDir = (dir + i / 2 + 1) % 3;
@@ -805,9 +807,7 @@ void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g) {
       }
       vec3 faceMin = glm::max(faceMinA, faceMinB);
       vec3 faceMax = glm::min(faceMaxA, faceMaxB);
-      if (segmentFaceInterssection(a->vertex.hermiteP, b->vertex.hermiteP, faceMin, faceMax, testDir)) {
-        faceVertices[i] = nullptr;
-      } else {
+      if (!segmentFaceInterssection(a->vertex.hermiteP, b->vertex.hermiteP, faceMin, faceMax, testDir)) {
         vec3 minEnd = faceMin + directionMap(dir) * (faceMax - faceMin);
         vec3 maxEnd = faceMax - directionMap(dir) * (faceMax - faceMin);
         vec3 p1, p2;
@@ -847,8 +847,8 @@ void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g) {
       if (a != b) {
         polygons.push_back(&a->vertex);
         if (faceVertices[i]) {
-//          polygons.push_back(faceVertices[i]);
-//          polygons.push_back(faceVertices[i]);
+          polygons.push_back(faceVertices[i]);
+          polygons.push_back(faceVertices[i]);
         }
         polygons.push_back(&b->vertex);
       }
@@ -866,6 +866,9 @@ void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g) {
       };
       detectSharpTriangles(triangle, mesh, g);
     }
+  }
+  for (int i = 0; i < 4; ++i) {
+    delete faceVertices[i];
   }
 }
 

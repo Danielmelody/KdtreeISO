@@ -181,8 +181,8 @@ int main() {
   GLuint positionsBuffers[2];
   GLuint normalsBuffers[2];
   GLuint indicesBuffers[2];
-  Sphere g1(3, vec3(0, 0, 0));
-  // AABB g1(vec3(-2, -5, -2), vec3(2, 5, 2));
+  // Sphere g(3, vec3(0, 0, 0));
+  AABB g1(vec3(-2, -5, -2), vec3(2, 5, 2));
   AABB g2(vec3(-5, -0.5, -5), vec3(5, 0.5, 5));
   // AABB g(vec3(1.7, -3, -3), vec3(2.3, 3, 3));
   //Union gu(&g1, &g2);
