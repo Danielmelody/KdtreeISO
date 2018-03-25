@@ -99,11 +99,11 @@ protected:
                                const glm::vec3 &edgeP,
                                const glm::vec3 &normal);
   static bool intersectWithBrothers(int cornerDir, Octree *node);
-  static bool segmentFaceInterssection(const glm::vec3 &va,
-                                       const glm::vec3 &vb,
-                                       const glm::vec3 &min,
-                                       const glm::vec3 max,
-                                       int dir);
+  static bool segmentFaceIntersection(const glm::vec3 &va,
+                                      const glm::vec3 &vb,
+                                      const glm::vec3 &min,
+                                      const glm::vec3 max,
+                                      int dir);
   static void generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g);
   static void generatePolygons(Octree *nodes[4], int dir, Mesh *mesh, Topology *g);
   static void detectSharpTriangles(Vertex *vertices[3], Mesh *mesh, Topology *g);

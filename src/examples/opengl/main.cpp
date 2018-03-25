@@ -71,7 +71,13 @@ void addMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint 
                GL_STATIC_DRAW);
 }
 
-void drawMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint &indicesBuffer, Program &p, bool shaded, bool wireframe) {
+void drawMesh(Mesh *mesh,
+              GLuint &positionsBuffer,
+              GLuint &normalsBuffer,
+              GLuint &indicesBuffer,
+              Program &p,
+              bool shaded,
+              bool wireframe) {
   glEnableVertexAttribArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, positionsBuffer);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
@@ -181,30 +187,32 @@ int main() {
   GLuint positionsBuffers[2];
   GLuint normalsBuffers[2];
   GLuint indicesBuffers[2];
-  // Sphere g(3, vec3(0, 0, 0));
-  AABB g1(vec3(-2, -5, -2), vec3(2, 5, 2));
-  AABB g2(vec3(-5, -0.5, -5), vec3(5, 0.5, 5));
-  // AABB g(vec3(1.7, -3, -3), vec3(2.3, 3, 3));
-  //Union gu(&g1, &g2);
-  // Union g(&g1, &g2);
-  // Intersection g(&g1, &g2);
-  Difference g(&g2, &g1);
+  Transform g(
+      glm::rotate(
+          glm::translate(mat4(1.f), vec3(0)),
+          glm::radians(6.f),
+          vec3(1, 0, 1)
+      ),
+      new Difference(
+          new AABB(vec3(-4), vec3(4)),
+          new Sphere(5, vec3(0))
+      )
+  );
 
-  float area = 12.f;
+  float area = 15.f;
   int svoCull = 0;
   int faceCount = 0;
-  auto octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), vec3(area), 7, &g, svoCull);
+  auto octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), vec3(area), 6, &g, svoCull);
 //  int traditionCount = 0;
-//  Octree::simplify(octree, 1e-3, &g, traditionCount);
+//  Octree::simplify(octree, 1e-2, &g, traditionCount);
 
   int edgeSimplifyCount = 0;
   int last = edgeSimplifyCount;
   Octree::edgeSimplify(octree, 0.01, 1e-2, &g, edgeSimplifyCount);
   cout << "edge simplify : " << edgeSimplifyCount - last << endl;
 
-
   auto *octreeVisual = new Mesh();
-  unordered_set<Octree*> visualUtil;
+  unordered_set<Octree *> visualUtil;
   Octree::drawOctrees(octree.get(), octreeVisual, visualUtil);
   Mesh *mesh = Octree::generateMesh(octree, &g, faceCount);
   cout.setf(ios::scientific);
@@ -220,8 +228,6 @@ int main() {
 
   addMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0]);
   addMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1]);
-
-
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);

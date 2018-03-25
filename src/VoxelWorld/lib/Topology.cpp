@@ -58,6 +58,10 @@ uint8_t Topology::getMaterialID() {
   return materialID;
 }
 
+float Transform::value(const glm::vec3 &p) {
+  return inner->value(trans * vec4(p, 1.f));
+}
+
 float Sphere::value(const glm::vec3 &p) {
   return glm::length(p - center) - radius;
 }

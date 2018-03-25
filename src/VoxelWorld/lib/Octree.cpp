@@ -4,8 +4,6 @@
 #include <glm/glm.hpp>
 #include <Mesh.h>
 #include "Octree.h"
-#include <limits>
-#include <unordered_set>
 
 using namespace glm;
 
@@ -301,7 +299,9 @@ void Octree::simplify(std::shared_ptr<Octree> root, float threshold, Topology *g
   vec3 tempP;
   sum.solve(tempP, root->error);
   root->qef.set(sum);
-  if (root->error < threshold) {
+  float value = geometry->value(tempP);
+  value = 0.f;
+  if (root->error + abs(value) < threshold) {
     // getSelfQef(root, geometry, root->qef);
     calHermite(root.get(), &sum, geometry);
     count++;
@@ -333,7 +333,9 @@ std::shared_ptr<Octree> Octree::edgeClassifier(std::shared_ptr<Octree> root,
   if (!root || root->isLeaf) {
     return root;
   }
-
+  for (int i = 0; i < 8; ++i) {
+    root->children[i] = edgeClassifier(root->children[i], roughnessT, qefT, classifyDir, geometry, count);
+  }
   for (int i = 0; i < 4; ++i) {
     auto &a = root->children[cellProcFaceMask[i + classifyDir * 4][0]];
     auto &b = root->children[cellProcFaceMask[i + classifyDir * 4][1]];
@@ -349,9 +351,6 @@ std::shared_ptr<Octree> Octree::edgeClassifier(std::shared_ptr<Octree> root,
                  geometry,
                  faceMin,
                  root->size.x / 2.f);
-  }
-  for (int i = 0; i < 8; ++i) {
-    root->children[i] = edgeClassifier(root->children[i], roughnessT, qefT, classifyDir, geometry, count);
   }
   return root;
 
@@ -481,6 +480,13 @@ void Octree::edgeCollapse(std::shared_ptr<Octree> &a,
   float combineError;
   edgeQEF.solve(combineP, combineError);
   vec3 surfaceEdge = b->vertex.hermiteP - a->vertex.hermiteP;
+//
+//  if (combineError < qefT) {
+//    combine(a, b, geometry);
+//  }
+//
+//  return;
+
   float roughnessA = glm::dot(glm::normalize(surfaceEdge), glm::normalize(a->clusterQef->averageNormalSum));
   float roughnessB = glm::dot(glm::normalize(surfaceEdge), glm::normalize(b->clusterQef->averageNormalSum));
   if (roughnessA * roughnessA < roughnessT && roughnessB * roughnessB < roughnessT) {
@@ -657,7 +663,6 @@ void Octree::combine(std::shared_ptr<Octree> &a, std::shared_ptr<Octree> &b, Top
   auto smClusterMin = smaller->clusterMin;
   auto smClusterSize = smaller->clusterSize;
 
-
   for (auto oct : *(smaller->cluster)) {
     (*oct)->cluster = bigger->cluster;
     (*oct)->clusterQef = bigger->clusterQef;
@@ -741,7 +746,7 @@ bool Octree::findFeatureNodes(Octree *node,
    */
 }
 
-bool Octree::segmentFaceInterssection(const vec3 &va, const vec3 &vb, const vec3 &min, const vec3 max, int dir) {
+bool Octree::segmentFaceIntersection(const vec3 &va, const vec3 &vb, const vec3 &min, const vec3 max, int dir) {
   float l = (vb - va)[dir];
   vec3 p = (min - va)[dir] / l * vb + (vb - min)[dir] / l * va;
   for (int i = 0; i < 3; ++i) {
@@ -807,37 +812,65 @@ void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g) {
       }
       vec3 faceMin = glm::max(faceMinA, faceMinB);
       vec3 faceMax = glm::min(faceMaxA, faceMaxB);
-      if (!segmentFaceInterssection(a->vertex.hermiteP, b->vertex.hermiteP, faceMin, faceMax, testDir)) {
+      if (!segmentFaceIntersection(a->vertex.hermiteP, b->vertex.hermiteP, faceMin, faceMax, testDir)) {
         vec3 minEnd = faceMin + directionMap(dir) * (faceMax - faceMin);
         vec3 maxEnd = faceMax - directionMap(dir) * (faceMax - faceMin);
-        vec3 p1, p2;
-        g->solve(faceMin, minEnd, p1);
-        g->solve(maxEnd, faceMax, p2);
-        faceVertices[i] = new Vertex();
-        calVertex(faceVertices[i], (p1 + p2) / 2.f, mesh, g);
-        needFix = true;
+        glm::vec3 points[4] = {faceMin, minEnd, faceMax, maxEnd};
+        vec3 massPointSum(0.f);
+        int pointCount = 0;
+        for (int k = 0; k < 4; ++k) {
+          float v1 = g->value(points[k]);
+          float v2 = g->value(points[(k + 1) % 4]);
+          if ((v1 >= 0 && v2 < 0) || (v1 < 0 && v2 >= 0)) {
+            vec3 x;
+            g->solve(points[k], points[(k + 1) % 4], x);
+            massPointSum += x;
+            pointCount++;
+          }
+        }
+        if (pointCount > 0) {
+          if (pointCount != 2) { ;
+          }
+          faceVertices[i] = new Vertex();
+          calVertex(faceVertices[i], massPointSum / (float) pointCount, mesh, g);
+          needFix = true;
+        }
       }
     } else {
       sameCellIndex[0] = edgeAdjacentCellIndexA;
       sameCellIndex[1] = edgeAdjacentCellIndexB;
     }
   }
-  if (needFix) {
-    int minCellIndex = 0;
-    for (int i = 0; i < 4; ++i) {
-      int edgeAdjacentCellIndexA = edgeTestNodeOrder[i][0];
-      int edgeAdjacentCellIndexB = edgeTestNodeOrder[i][1];
-      if (edgeAdjacentCellIndexA != sameCellIndex[0] && edgeAdjacentCellIndexA != sameCellIndex[1]
-          && edgeAdjacentCellIndexB != sameCellIndex[0] && edgeAdjacentCellIndexB != sameCellIndex[1]) {
-        minCellIndex = edgeAdjacentCellIndexA;
-      }
-    }
 
-    Vertex edgeVertex;
-    vec3 p1 = *nodes[minCellIndex]->clusterSize * min_offset_subdivision(edgeProcEdgeMask[dir][0][minCellIndex])
-        + *nodes[minCellIndex]->clusterMin;
-    vec3 p2 = *nodes[minCellIndex]->clusterSize * min_offset_subdivision(edgeProcEdgeMask[dir][1][minCellIndex])
-        + *nodes[minCellIndex]->clusterMin;
+  int minCellIndex = 0;
+  for (int i = 0; i < 4; ++i) {
+    int edgeAdjacentCellIndexA = edgeTestNodeOrder[i][0];
+    int edgeAdjacentCellIndexB = edgeTestNodeOrder[i][1];
+    if (edgeAdjacentCellIndexA != sameCellIndex[0] && edgeAdjacentCellIndexA != sameCellIndex[1]
+        && edgeAdjacentCellIndexB != sameCellIndex[0] && edgeAdjacentCellIndexB != sameCellIndex[1]) {
+      minCellIndex = edgeAdjacentCellIndexA;
+    }
+  }
+
+  Vertex edgeVertex;
+  vec3 p1 = *nodes[minCellIndex]->clusterSize * min_offset_subdivision(edgeProcEdgeMask[dir][0][minCellIndex])
+      + *nodes[minCellIndex]->clusterMin;
+  vec3 p2 = *nodes[minCellIndex]->clusterSize * min_offset_subdivision(edgeProcEdgeMask[dir][1][minCellIndex])
+      + *nodes[minCellIndex]->clusterMin;
+
+  for (int i = 0; i < 4; ++i) {
+    p1[dir] = std::max((*nodes[i]->clusterMin)[dir], p1[dir]);
+    p2[dir] = std::min((*nodes[i]->clusterMin)[dir] + (*nodes[i]->clusterSize)[dir],p2[dir]);
+  }
+
+  float v1 = g->value(p1);
+  float v2 = g->value(p2);
+
+  if ((v1 >= 0 && v2 >= 0) || (v1 < 0 && v2 < 0)) {
+    return;
+  }
+
+  if (needFix) {
     g->solve(p1, p2, edgeVertex.hermiteP);
     calVertex(&edgeVertex, edgeVertex.hermiteP, mesh, g);
     polygons.clear();
@@ -1000,5 +1033,6 @@ void Octree::calHermite(Octree *node, QefSolver *qef, Topology *g) {
       p = (min + max) / 2.f;
     }
   }
+
   g->normal(p, node->vertex.hermiteN);
 }
