@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include "Qef.h"
 
-#define SVD_NUM_SWEEPS 10
+#define SVD_NUM_SWEEPS 5
 
 const float Tiny_Number = 1.e-8;
 
