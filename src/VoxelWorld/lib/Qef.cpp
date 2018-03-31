@@ -191,6 +191,10 @@ void QefSolver::calRoughness() {
   roughness = 1.f - glm::length(averageNormalSum) / (float)pointCount;
 }
 
+float QefSolver::getError(const glm::vec3 &p) {
+  return qef_calc_error(ATA, p, ATb, btb);
+}
+
 void QefSolver::solve(glm::vec3 &hermiteP, float &error) {
   calRoughness();
   glm::vec3 massPoint = massPointSum / (float) pointCount;

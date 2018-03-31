@@ -281,17 +281,20 @@ Octree *Octree::losslessCompress(Octree *root,
   return root;
 }
 
-void Octree::simplify(Octree *root, float threshold, Topology *geometry, int &count) {
+int Octree::simplify(Octree *root, float threshold, Topology *geometry) {
   if (!root) {
-    return;
+    return 0;
   }
   if (root->isLeaf) {
-    return;
+    return 0;
   }
   QefSolver sum;
+  int reduction = 0;
+  int childCount = 0;
   for (auto &child : root->children) {
-    simplify(child, threshold, geometry, count);
+    reduction += simplify(child, threshold, geometry);
     if (child) {
+      childCount++;
       sum.combine(child->qef);
     }
   }
@@ -303,13 +306,14 @@ void Octree::simplify(Octree *root, float threshold, Topology *geometry, int &co
   if (root->error + abs(value) < threshold) {
     // getSelfQef(root, geometry, root->qef);
     calHermite(root, &sum, geometry, &root->vertex);
-    count++;
+    reduction += childCount - 1;
     for (auto &child: root->children) {
       child = nullptr;
     }
     root->isLeaf = true;
     root->clusterQef->set(root->qef);
   }
+  return reduction;
 }
 
 void Octree::reverseExtendedSimplify(Octree *root, Topology *g) {
@@ -337,24 +341,20 @@ Octree *Octree::extendedSimplify(Octree *root,
                                  float threshold,
                                  Topology *geometry,
                                  int &count) {
-  // for (int i = 0; i < 3; ++i) {
-  edgeClassifier(root, threshold, geometry, count);
-  // }
+  edgeClassifier(root, threshold, geometry);
   std::unordered_set<std::unordered_set<Octree *> *> clusters;
-
   edgeCluster(root, geometry, count, clusters);
   return root;
 }
 
 Octree *Octree::edgeClassifier(Octree *root,
                                float threshold,
-                               Topology *geometry,
-                               int &count) {
+                               Topology *geometry) {
   if (!root || root->isLeaf) {
     return root;
   }
   for (int i = 0; i < 8; ++i) {
-    root->children[i] = edgeClassifier(root->children[i], threshold, geometry, count);
+    root->children[i] = edgeClassifier(root->children[i], threshold, geometry);
   }
   for (int i = 0; i < 12; ++i) {
     auto &a = root->children[cellProcFaceMask[i][0]];
@@ -386,12 +386,6 @@ void Octree::edgeCluster(Octree *root,
       return;
     }
     clusters.insert(root->cluster);
-
-//    for (auto oct : *root->cluster) {
-//      assert(oct->clusterVertex == root->clusterVertex);
-//      assert(oct->clusterVertex->vertexIndex > 0);
-//    }
-
     count += std::max(0, (int) root->cluster->size() - 1);
     if (root->cluster->size() > 1) {
       calHermite(root, root->clusterQef, geometry, root->clusterVertex);
@@ -494,12 +488,15 @@ void Octree::edgeCollapse(Octree *&a,
   }
 }
 
-Mesh *Octree::generateMesh(Octree *root, Topology *geometry, int &count) {
+Mesh *Octree::generateMesh(Octree *root,
+                           Topology *geometry,
+                           int &intersectionPreservingVerticesCount,
+                           bool intersectionFree) {
   assert(root);
   auto *mesh = new Mesh();
   std::unordered_set<Vertex *> indexed;
   generateVertexIndices(root, mesh, geometry, indexed);
-  contourCell(root, mesh, geometry, count);
+  contourCell(root, mesh, geometry, intersectionPreservingVerticesCount, intersectionFree);
   return mesh;
 }
 
@@ -524,35 +521,43 @@ void Octree::generateVertexIndices(Octree *node,
   }
 }
 
-void Octree::contourCell(Octree *root, Mesh *mesh, Topology *geometry, int &count) {
+void Octree::contourCell(Octree *root,
+                         Mesh *mesh,
+                         Topology *geometry,
+                         int &intersectionPreservingVerticesCount,
+                         bool intersectionFree) {
   if (!root || root->isLeaf) {
     return;
   }
   for (int i = 0; i < 8; ++i) {
-    contourCell(root->children[i], mesh, geometry, count);
+    contourCell(root->children[i], mesh, geometry, intersectionPreservingVerticesCount, intersectionFree);
   }
   for (int i = 0; i < 12; ++i) {
     Octree *nodes[2] = {
         root->children[cellProcFaceMask[i][0]],
         root->children[cellProcFaceMask[i][1]],
     };
-    contourFace(nodes, cellProcFaceMask[i][2], mesh, geometry, count);
+    contourFace(nodes, cellProcFaceMask[i][2], mesh, geometry, intersectionPreservingVerticesCount, intersectionFree);
   }
   for (int i = 0; i < 6; ++i) {
     Octree *nodes[4];
     for (int j = 0; j < 4; ++j) {
       nodes[j] = root->children[cellProcEdgeMask[i][j]];
     }
-    contourEdge(nodes, cellProcEdgeMask[i][4], mesh, geometry);
+    contourEdge(nodes, cellProcEdgeMask[i][4], mesh, geometry, intersectionPreservingVerticesCount, intersectionFree);
   }
 }
 
-void Octree::contourFace(Octree *nodes[2], int dir, Mesh *mesh, Topology *geometry, int &count) {
+void Octree::contourFace(Octree *nodes[2],
+                         int dir,
+                         Mesh *mesh,
+                         Topology *geometry,
+                         int &intersectionPreservingVerticesCount,
+                         bool intersectionFree) {
   if (!nodes[0] || !nodes[1]) {
     return;
   }
   if (nodes[0]->isLeaf && nodes[1]->isLeaf) {
-    count++;
     return;
   }
   // the subdivision of a face resulting 4 child faces;
@@ -563,7 +568,12 @@ void Octree::contourFace(Octree *nodes[2], int dir, Mesh *mesh, Topology *geomet
         subdivision_face[j] = subdivision_face[j]->children[faceProcFaceMask[dir][i][j]];
       }
     }
-    contourFace(subdivision_face, faceProcFaceMask[dir][i][2], mesh, geometry, count);
+    contourFace(subdivision_face,
+                faceProcFaceMask[dir][i][2],
+                mesh,
+                geometry,
+                intersectionPreservingVerticesCount,
+                intersectionFree);
   }
   for (int i = 0; i < 4; ++i) {
     Octree *edge_nodes[4];
@@ -582,17 +592,27 @@ void Octree::contourFace(Octree *nodes[2], int dir, Mesh *mesh, Topology *geomet
         edge_nodes[j] = nodes[order]->children[c[j]];
       }
     }
-    contourEdge(edge_nodes, faceProcEdgeMask[dir][i][5], mesh, geometry);
+    contourEdge(edge_nodes,
+                faceProcEdgeMask[dir][i][5],
+                mesh,
+                geometry,
+                intersectionPreservingVerticesCount,
+                intersectionFree);
   }
 }
 
-void Octree::contourEdge(Octree *nodes[4], int dir, Mesh *mesh, Topology *geometry) {
+void Octree::contourEdge(Octree *nodes[4],
+                         int dir,
+                         Mesh *mesh,
+                         Topology *geometry,
+                         int &intersectionPreservingVerticesCount,
+                         bool intersectionFree) {
   if (!nodes[0] || !nodes[1] || !nodes[2] || !nodes[3]) {
     return;
   }
 
   if (nodes[0]->isLeaf && nodes[1]->isLeaf && nodes[2]->isLeaf && nodes[3]->isLeaf) {
-    generateQuad(nodes, dir, mesh, geometry);
+    generateQuad(nodes, dir, mesh, geometry, intersectionPreservingVerticesCount, intersectionFree);
     return;
   }
 
@@ -606,7 +626,7 @@ void Octree::contourEdge(Octree *nodes[4], int dir, Mesh *mesh, Topology *geomet
         subdivision_edge[j] = nodes[j];
       }
     }
-    contourEdge(subdivision_edge, dir, mesh, geometry);
+    contourEdge(subdivision_edge, dir, mesh, geometry, intersectionPreservingVerticesCount, intersectionFree);
   }
 }
 
@@ -746,7 +766,12 @@ void calVertex(Vertex *v, vec3 p, Mesh *mesh, Topology *g) {
   mesh->normals.push_back(v->hermiteN);
 }
 
-void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g) {
+void Octree::generateQuad(Octree *nodes[4],
+                          int dir,
+                          Mesh *mesh,
+                          Topology *g,
+                          int &intersectionPreservingVerticesCount,
+                          bool intersectionFree) {
   std::unordered_set<Vertex *> identifier;
   std::vector<Vertex *> polygons;
   bool needFix = false;
@@ -839,7 +864,7 @@ void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g) {
   if ((v1 >= 0 && v2 >= 0) || (v1 < 0 && v2 < 0)) {
     return;
   }
-  if (needFix) {
+  if (intersectionFree && needFix) {
     g->solve(p1, p2, edgeVertex.hermiteP);
     calVertex(&edgeVertex, edgeVertex.hermiteP, mesh, g);
     polygons.clear();
@@ -849,6 +874,7 @@ void Octree::generateQuad(Octree *nodes[4], int dir, Mesh *mesh, Topology *g) {
       if (a != b) {
         polygons.push_back(a->clusterVertex);
         if (faceVertices[i]) {
+          intersectionPreservingVerticesCount++;
           polygons.push_back(faceVertices[i]);
           polygons.push_back(faceVertices[i]);
         }
@@ -929,7 +955,7 @@ void Octree::detectSharpTriangles(Vertex *vertices[3], Mesh *mesh, Topology *g) 
     offset *= 0.05f;
     glm::vec3 normal;
     g->normal(targetVert->hermiteP + offset, normal);
-    if (glm::dot(normal, targetVert->hermiteN) < std::cos(glm::radians(15.f))) {
+    if (glm::dot(normal, targetVert->hermiteN) < std::cos(glm::radians(90.f))) {
       mesh->indices.push_back(static_cast<unsigned int>(mesh->positions.size()));
       mesh->positions.push_back(targetVert->hermiteP);
       mesh->normals.push_back(normal);

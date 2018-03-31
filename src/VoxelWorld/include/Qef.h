@@ -21,6 +21,7 @@ struct QefSolver {
   void add(const glm::vec3 &p, const glm::vec3 &n);
   void solve(glm::vec3 &hermiteP, float &error);
   void calRoughness();
+  float getError(const glm::vec3& p);
   QefSolver()
       : ATA(glm::mat4(0.0)),
         ATb(glm::vec3(0.0)),

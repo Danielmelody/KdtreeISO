@@ -189,44 +189,54 @@ int main() {
   GLuint indicesBuffers[2];
   Transform g(
       glm::rotate(
-          glm::translate(mat4(1.f), vec3(0, 0, 1)),
+          glm::translate(mat4(1.f), vec3(0, 0, 0)),
           glm::radians(0.f),
           vec3(1, 0, 0)
       ),
-      new Difference(
-          new AABB(vec3(-4, -4, -2.5), vec3(4, 4, 0)),
-          new Union(
+      new Union(
+          new Torus(5.f, 1.f),
+          new ExpUnion(
               new Sphere(2, vec3(1, 1, 0)),
-              new Sphere(2, vec3(-1, -1, 0))
+              new Sphere(2, vec3(-1, -1, 0)),
+              4
           )
       )
+//      new Heart(5)
+//      new AABB(vec3(-4), vec3(4))
+//      new Difference(
+//          new AABB(vec3(-4), vec3(4)),
+//          new Sphere(5, vec3(0))
+//      )
   );
 
-  float area = 11.f;
+  float area = 15.f;
   int svoCull = 0;
-  int faceCount = 0;
   auto octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), vec3(area), 7, &g, svoCull);
-  int traditionCount = 0;
 
-  for (int i = 0; i < 3; ++i) {
-    float threshold = std::pow(10.f, (float) i - 3.f);
+  cout.setf(ios::scientific);
+  int originReduction = 0;
+  for (int i = 0; i < 1; ++i) {
+    float threshold = std::pow(10.f, (float) i - 2.f);
+    cout << "Threshold : " << threshold << endl;
     Octree::reverseExtendedSimplify(octree, &g);
-    Octree::simplify(octree, threshold, &g, traditionCount);
-    cout << "tradition simplify : " << traditionCount << endl;
-    int edgeSimplifyCount = 0;
-    int last = edgeSimplifyCount;
-    Octree::extendedSimplify(octree, threshold, &g, edgeSimplifyCount);
-    cout << "edge simplify : " << edgeSimplifyCount - last << endl;
+    originReduction += Octree::simplify(octree, threshold, &g);
+    cout << "origin reduction : " << originReduction << endl;
+    int extendedReduction = 0;
+    Octree::extendedSimplify(octree, threshold, &g, extendedReduction);
+    cout << "extended reduction : " << extendedReduction << endl;
   }
 
   auto *octreeVisual = new Mesh();
   unordered_set<Vertex *> visualUtil;
   Octree::drawOctrees(octree, octreeVisual, visualUtil);
-  Mesh *mesh = Octree::generateMesh(octree, &g, faceCount);
-  cout.setf(ios::scientific);
+
+  int intersectionPreservingVerticesCount = 0;
+
+  Mesh *mesh = Octree::generateMesh(octree, &g, intersectionPreservingVerticesCount, true);
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
-  cout << "vertex count: " << mesh->positions.size() / 3 << endl;
-  // mesh->generateFlatNormals();
+  cout << "vertex count: " << mesh->positions.size() << endl;
+  cout << "intersection preserving vertices count: " << intersectionPreservingVerticesCount << endl;
+  mesh->generateFlatNormals();
 
   Program program;
   if (!program.init(vert, frag)) {
