@@ -1,13 +1,16 @@
 //
 // Created by Danielhu on 2018/1/20.
 //
+#include <unordered_map>
 #include <glm/glm.hpp>
+#include <glm/gtx/intersect.hpp>
 #include <Mesh.h>
 #include "Octree.h"
+#include "Utils.h"
 
 using namespace glm;
 
-const vec3 min_offset_subdivision(int i) {
+const vec3 &min_offset_subdivision(int i) {
   static const vec3 offsets[8] = {
       vec3(0.f, 0.f, 0.f),
       vec3(0.f, 0.f, 1.f),
@@ -22,7 +25,7 @@ const vec3 min_offset_subdivision(int i) {
   return offsets[i];
 };
 
-const vec3 directionMap(int i) {
+const vec3 &directionMap(int i) {
   static const vec3 offsets[3] = {
       vec3(1.f, 0.f, 0.f),
       vec3(0.f, 1.f, 0.f),
@@ -61,7 +64,7 @@ const int faceProcFaceMask[3][4][3] = {
 
 const int edgeTestNodeOrder[4][2] = {{0, 1}, {3, 2}, {1, 2}, {0, 3}};
 
-const vec3 faceSubDivision(int dir, int i) {
+const vec3 &faceSubDivision(int dir, int i) {
   static const vec3 offsets[3][4] = {
       {vec3(0.f, 0.f, 0.f), vec3(0.f, 0.f, 1.f), vec3(0.f, 1.f, 0.f), vec3(0.f, 1.f, 1.f),},
       {vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 0.f), vec3(0.f, 0.f, 1.f), vec3(1.f, 0.f, 1.f),},
@@ -77,8 +80,8 @@ const int faceProcEdgeMask[3][4][6] = {
     {{1, 1, 3, 2, 0, 0}, {1, 5, 7, 6, 4, 0}, {0, 1, 0, 4, 5, 1}, {0, 3, 2, 6, 7, 1}}
 };
 
-const vec3 edgeProcDir(int i, int j) {
-  const vec3 dirs[3][4] = {
+const vec3 &edgeProcDir(int i, int j) {
+  const static vec3 dirs[3][4] = {
       {vec3(0.f, -1.f, -1.f), vec3(0.f, -1.f, 1.f), vec3(0.f, 1.f, 1.f), vec3(0.f, 1.f, -1.f),},
       {vec3(-1.f, 0.f, -1.f), vec3(-1.f, 0.f, 1.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, -1.f),},
       {vec3(-1.f, -1.f, 0.f), vec3(1.f, -1.f, 0.f), vec3(1.f, 1.f, 0.f), vec3(-1.f, 1.f, 0.f),},
@@ -745,25 +748,45 @@ bool Octree::findFeatureNodes(Octree *node,
    */
 }
 
-bool Octree::segmentFaceIntersection(const vec3 &va, const vec3 &vb, const vec3 &min, const vec3 max, int dir) {
-  float l = (vb - va)[dir];
-  vec3 p = (min - va)[dir] / l * vb + (vb - min)[dir] / l * va;
-  for (int i = 0; i < 3; ++i) {
-    if (dir != i) {
-      if (p[i] < min[i] || p[i] > max[i]) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 void calVertex(Vertex *v, vec3 p, Mesh *mesh, Topology *g) {
   v->hermiteP = p;
   g->normal(p, v->hermiteN);
   v->vertexIndex = static_cast<unsigned int>(mesh->positions.size());
   mesh->positions.push_back(v->hermiteP);
   mesh->normals.push_back(v->hermiteN);
+}
+
+bool Octree::isInterFreeCondition2Faild(const std::vector<Vertex *> &polygons, const vec3 &p1, const vec3 &p2) {
+  int anotherV = 3;
+  bool interSupportingEdge = false;
+
+  for (int i = 2; i < polygons.size(); ++i) {
+    vec3 baryPos;
+    bool isInter = glm::intersectRayTriangle(p1,
+                                             p2 - p1,
+                                             polygons[0]->hermiteP,
+                                             polygons[i - 1]->hermiteP,
+                                             polygons[i]->hermiteP,
+                                             baryPos);
+    isInter = isInter && (baryPos.z > 0.f && baryPos.z < 1.f);
+    if (isInter) {
+      interSupportingEdge = true;
+      anotherV = i % 3 + 1;
+    }
+  }
+  if (polygons.size() == 3) {
+    return !interSupportingEdge;
+  } else {
+    vec3 baryPos;
+    bool interTetrahedron = glm::intersectRayTriangle(polygons[0]->hermiteP,
+                                                      polygons[2]->hermiteP - polygons[0]->hermiteP,
+                                                      p1,
+                                                      p2,
+                                                      polygons[anotherV]->hermiteP,
+                                                      baryPos);
+    interTetrahedron = interTetrahedron && (baryPos.z > 0.f && baryPos.z < 1.f);
+    return !(interTetrahedron && interSupportingEdge);
+  }
 }
 
 void Octree::generateQuad(Octree *nodes[4],
@@ -773,20 +796,20 @@ void Octree::generateQuad(Octree *nodes[4],
                           int &intersectionPreservingVerticesCount,
                           bool intersectionFree) {
   std::unordered_set<Vertex *> identifier;
-  std::vector<Vertex *> polygons;
-  bool needFix = false;
+  std::vector<Vertex *> polygon;
+  bool condition1Failed = false;
   for (int i = 0; i < 4; ++i) {
     if (identifier.find(nodes[i]->clusterVertex) == identifier.end()) {
-      polygons.push_back(nodes[i]->clusterVertex);
+      polygon.push_back(nodes[i]->clusterVertex);
     }
     identifier.insert(nodes[i]->clusterVertex);
   }
 
-  if (polygons.size() < 3) {
+  if (polygon.size() < 3) {
     return;
   }
-  Vertex *faceVertices[4] = {nullptr, nullptr, nullptr, nullptr};
   int sameCellIndex[2] = {2, 3};
+  int firstConcaveFaceVertex = 0;
   for (int i = 0; i < 4; ++i) {
     int testDir = (dir + i / 2 + 1) % 3;
     int edgeAdjacentCellIndexA = edgeTestNodeOrder[i][0];
@@ -794,6 +817,11 @@ void Octree::generateQuad(Octree *nodes[4],
     Octree *a = nodes[edgeAdjacentCellIndexA];
     Octree *b = nodes[edgeAdjacentCellIndexB];
     if (a->cluster != b->cluster) {
+      if (a->faceVertices.find(b) != a->faceVertices.end()) {
+        firstConcaveFaceVertex = i;
+        condition1Failed = true;
+        continue;
+      }
       vec3 faceMinA = vec3(std::numeric_limits<float>::max());
       vec3 faceMinB = faceMinA;
       vec3 faceMaxA = -vec3(std::numeric_limits<float>::max());
@@ -827,9 +855,12 @@ void Octree::generateQuad(Octree *nodes[4],
           }
         }
         if (pointCount > 0) {
-          faceVertices[i] = new Vertex();
-          calVertex(faceVertices[i], massPointSum / (float) pointCount, mesh, g);
-          needFix = true;
+          firstConcaveFaceVertex = i;
+          auto faceV = new Vertex();
+          calVertex(faceV, massPointSum / (float) pointCount, mesh, g);
+          a->faceVertices[b] = faceV;
+          b->faceVertices[a] = faceV;
+          condition1Failed = true;
         }
       }
     } else {
@@ -864,39 +895,76 @@ void Octree::generateQuad(Octree *nodes[4],
   if ((v1 >= 0 && v2 >= 0) || (v1 < 0 && v2 < 0)) {
     return;
   }
-  if (intersectionFree && needFix) {
-    g->solve(p1, p2, edgeVertex.hermiteP);
-    calVertex(&edgeVertex, edgeVertex.hermiteP, mesh, g);
-    polygons.clear();
-    for (int i = 0; i < 4; ++i) {
-      Octree *a = nodes[edgeTestNodeOrder[i][0]];
-      Octree *b = nodes[edgeTestNodeOrder[i][1]];
-      if (a != b) {
-        polygons.push_back(a->clusterVertex);
-        if (faceVertices[i]) {
-          intersectionPreservingVerticesCount++;
-          polygons.push_back(faceVertices[i]);
-          polygons.push_back(faceVertices[i]);
+
+  bool condition2Failed = isInterFreeCondition2Faild(polygon, p1, p2);
+  if (polygon.size() > 3) {
+    std::vector<Vertex *> reversePolygons = {polygon[1], polygon[2], polygon[3], polygon[0]};
+    bool reverseCondition2Failed = isInterFreeCondition2Faild(reversePolygons, p1, p2);
+    if (!reverseCondition2Failed) {
+      /// NOTE: the swap here happens whether intersection-free or not
+      polygon.swap(reversePolygons);
+    }
+    condition2Failed = condition2Failed && reverseCondition2Failed;
+  }
+  if (intersectionFree && (condition1Failed || condition2Failed)) {
+    polygon.clear();
+    if (!condition2Failed) {
+      std::vector<int> concaveFlags;
+      std::vector<Vertex *> convexPart;
+      // edge vertex
+      intersectionPreservingVerticesCount++;
+      int concaveCount = 0;
+      for (int i = 0; i < 4; ++i) {
+        int index = (i + firstConcaveFaceVertex) % 4;
+        auto faceIter = nodes[index]->faceVertices.find(nodes[(index + 1) % 4]);
+        auto cellVertex = nodes[(index + 1) % 4]->clusterVertex;
+        if (faceIter != nodes[index]->faceVertices.end()) {
+          polygon.push_back(faceIter->second);
+          concaveFlags.push_back(1);
+          convexPart.push_back(faceIter->second);
+          concaveCount++;
         }
-        polygons.push_back(b->clusterVertex);
+        polygon.push_back(cellVertex);
+        concaveFlags.push_back(0);
+      }
+      for (int i = 0; i < polygon.size() - 2; ++i) {
+        Vertex *triangle[3] = {
+            polygon[0], polygon[i + 1], polygon[i + 2]
+        };
+        detectSharpTriangles(triangle, mesh, g);
+      }
+    } else {
+      g->solve(p1, p2, edgeVertex.hermiteP);
+      calVertex(&edgeVertex, edgeVertex.hermiteP, mesh, g);
+      for (int i = 0; i < 4; ++i) {
+        Octree *a = nodes[i];
+        Octree *b = nodes[(i + 1) % 4];
+        if (a != b) {
+          polygon.push_back(a->clusterVertex);
+          auto faceVIter = a->faceVertices.find(b);
+          if (faceVIter != a->faceVertices.end()) {
+            // face vertex
+            intersectionPreservingVerticesCount++;
+            polygon.push_back(faceVIter->second);
+            polygon.push_back(faceVIter->second);
+          }
+          polygon.push_back(b->clusterVertex);
+        }
+      }
+      for (int i = 0; i < polygon.size() / 2; ++i) {
+        Vertex *triangle[3] = {
+            &edgeVertex, polygon[i * 2], polygon[i * 2 + 1]
+        };
+        detectSharpTriangles(triangle, mesh, g);
       }
     }
-    for (int i = 0; i < polygons.size() / 2; ++i) {
-      Vertex *triangle[3] = {
-          &edgeVertex, polygons[i * 2], polygons[i * 2 + 1]
-      };
-      detectSharpTriangles(triangle, mesh, g);
-    }
   } else {
-    for (int i = 2; i < polygons.size(); ++i) {
+    for (int i = 2; i < polygon.size(); ++i) {
       Vertex *triangle[3] = {
-          polygons[0], polygons[i - 1], polygons[i]
+          polygon[0], polygon[i - 1], polygon[i]
       };
       detectSharpTriangles(triangle, mesh, g);
     }
-  }
-  for (int i = 0; i < 4; ++i) {
-    delete faceVertices[i];
   }
 }
 
@@ -955,7 +1023,7 @@ void Octree::detectSharpTriangles(Vertex *vertices[3], Mesh *mesh, Topology *g) 
     offset *= 0.05f;
     glm::vec3 normal;
     g->normal(targetVert->hermiteP + offset, normal);
-    if (glm::dot(normal, targetVert->hermiteN) < std::cos(glm::radians(90.f))) {
+    if (glm::dot(normal, targetVert->hermiteN) < std::cos(glm::radians(15.f))) {
       mesh->indices.push_back(static_cast<unsigned int>(mesh->positions.size()));
       mesh->positions.push_back(targetVert->hermiteP);
       mesh->normals.push_back(normal);

@@ -20,31 +20,31 @@ using namespace std;
 
 const char *vert =
     "#version 330 core\n"
-        "layout(location = 0) in vec3 position;\n"
-        "layout(location = 1) in vec3 normal;\n"
-        "\n"
-        "uniform mat4 mvp;\n"
-        "uniform mat4 m;\n"
-        "smooth out vec3 fragNormal;\n"
-        "\n"
-        "void main() {\n"
-        "    fragNormal = (m * vec4(normal, 1.0)).xyz;\n"
-        "    gl_Position = mvp * vec4(position, 1.0);\n"
-        "}";
+    "layout(location = 0) in vec3 position;\n"
+    "layout(location = 1) in vec3 normal;\n"
+    "\n"
+    "uniform mat4 mvp;\n"
+    "uniform mat4 m;\n"
+    "smooth out vec3 fragNormal;\n"
+    "\n"
+    "void main() {\n"
+    "    fragNormal = (m * vec4(normal, 1.0)).xyz;\n"
+    "    gl_Position = mvp * vec4(position, 1.0);\n"
+    "}";
 
 const char *frag =
     "#version 330 core\n"
-        "out vec3 color;\n"
-        "\n"
-        "smooth in vec3 fragNormal;\n"
-        "\n"
-        "uniform vec3 lightDir;\n"
-        "uniform vec3 albedo;\n"
-        "\n"
-        "void main() {\n"
-        "    color = albedo * max(dot(fragNormal, lightDir), 0.2f);\n"
-        "    // color = (1.0 - albedo) * (step(dot(fragNormal,vec3(0, 0, -1)), 0.0) * 0.8 + 0.2);\n"
-        "}";
+    "out vec3 color;\n"
+    "\n"
+    "smooth in vec3 fragNormal;\n"
+    "\n"
+    "uniform vec3 lightDir;\n"
+    "uniform vec3 albedo;\n"
+    "\n"
+    "void main() {\n"
+    "    color = albedo * max(dot(fragNormal, lightDir), 0.2f);\n"
+    "    // color = (1.0 - albedo) * (step(dot(fragNormal,vec3(0, 0, -1)), 0.0) * 0.8 + 0.2);\n"
+    "}";
 
 float cameraOffset = 20.f;
 double previousCursorX = 0.f;
@@ -193,20 +193,37 @@ int main() {
           glm::radians(0.f),
           vec3(1, 0, 0)
       ),
+//      new Difference(
+//          new AABB(vec3(-5, -5, -5), vec3(5, 5, -4.5))
+//          new Sphere(2, vec3(0, 0, -4.75))
+//      )
+//  new Difference(
+//      new Union(
+//          new AABB(vec3(-1.5f, -2, -1.5f), vec3(1.5f, 2, 1.5f)),
+//          new AABB(vec3(-1, -5, -1), vec3(1, 5, 1))
+//      ),
+//      new Sphere(1.9f)
+//  )
+
       new Union(
           new Torus(5.f, 1.f),
           new ExpUnion(
-              new Sphere(2, vec3(1, 1, 0)),
-              new Sphere(2, vec3(-1, -1, 0)),
-              4
+              new Sphere(2, vec3(1.5, 1.5, 0)),
+              new Sphere(2, vec3(-1.5, -1.5, 0)),
+              1
           )
       )
+//      new Difference(
+//          new AABB(vec3(-5), vec3(5)),
+//          new Sphere(3, vec3(0, 5, 0))
+//      )
 //      new Heart(5)
 //      new AABB(vec3(-4), vec3(4))
 //      new Difference(
-//          new AABB(vec3(-4), vec3(4)),
-//          new Sphere(5, vec3(0))
+//          new AABB(vec3(-4, -4, -1), vec3(4, 4, 1)),
+//          new AABB(vec3(-3.5f), vec3(3.5f))
 //      )
+//  new Sphere(5.f)
   );
 
   float area = 15.f;
@@ -216,7 +233,7 @@ int main() {
   cout.setf(ios::scientific);
   int originReduction = 0;
   for (int i = 0; i < 1; ++i) {
-    float threshold = std::pow(10.f, (float) i - 2.f);
+    float threshold = std::pow(10.f, (float) i - 0.f);
     cout << "Threshold : " << threshold << endl;
     Octree::reverseExtendedSimplify(octree, &g);
     originReduction += Octree::simplify(octree, threshold, &g);
@@ -234,8 +251,8 @@ int main() {
 
   Mesh *mesh = Octree::generateMesh(octree, &g, intersectionPreservingVerticesCount, true);
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
-  cout << "vertex count: " << mesh->positions.size() << endl;
-  cout << "intersection preserving vertices count: " << intersectionPreservingVerticesCount << endl;
+//  cout << "vertex count: " << mesh->positions.size() << endl;
+//  cout << "intersection preserving vertices count: " << intersectionPreservingVerticesCount << endl;
   mesh->generateFlatNormals();
 
   Program program;

@@ -10,6 +10,7 @@
 #include "Qef.h"
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include <memory>
 
 struct Vertex {
@@ -51,7 +52,10 @@ public:
                            float faceSize);
   static void cubeExtensionTest(Octree *a, Octree *b, int dir, float minSize);
 
-  static Mesh *generateMesh(Octree *root, Topology *geometry, int &intersectionPreservingVerticesCount, bool intersectionFree = true);
+  static Mesh *generateMesh(Octree *root,
+                            Topology *geometry,
+                            int &intersectionPreservingVerticesCount,
+                            bool intersectionFree = true);
   static void drawOctrees(Octree *root, Mesh *mesh, std::unordered_set<Vertex *> &visited);
   float getError() { return error; }
   Octree(glm::vec3 min, glm::vec3 size, int depth) :
@@ -79,9 +83,23 @@ public:
 //    }
   }
 protected:
-  static void contourCell(Octree *root, Mesh *mesh, Topology *geometry, int &intersectionPreservingVerticesCount, bool intersectionFree);
-  static void contourFace(Octree *nodes[2], int dir, Mesh *mesh, Topology *geometry, int &intersectionPreservingVerticesCount, bool intersectionFree);
-  static void contourEdge(Octree *nodes[4], int dir, Mesh *mesh, Topology *geometry, int &intersectionPreservingVerticesCount, bool intersectionFree);
+  static void contourCell(Octree *root,
+                          Mesh *mesh,
+                          Topology *geometry,
+                          int &intersectionPreservingVerticesCount,
+                          bool intersectionFree);
+  static void contourFace(Octree *nodes[2],
+                          int dir,
+                          Mesh *mesh,
+                          Topology *geometry,
+                          int &intersectionPreservingVerticesCount,
+                          bool intersectionFree);
+  static void contourEdge(Octree *nodes[4],
+                          int dir,
+                          Mesh *mesh,
+                          Topology *geometry,
+                          int &intersectionPreservingVerticesCount,
+                          bool intersectionFree);
   static void combine(Octree *a, Octree *b, Topology *g);
   static void generateVertexIndices(Octree *node,
                                     Mesh *mesh,
@@ -94,11 +112,9 @@ protected:
                                const glm::vec3 &edgeP,
                                const glm::vec3 &normal);
   static bool intersectWithBrothers(int cornerDir, Octree *node);
-  static bool segmentFaceIntersection(const glm::vec3 &va,
-                                      const glm::vec3 &vb,
-                                      const glm::vec3 &min,
-                                      const glm::vec3 max,
-                                      int dir);
+  static bool isInterFreeCondition2Faild(const std::vector<Vertex *> &polygons,
+                                         const glm::vec3 &p1,
+                                         const glm::vec3 &p2);
   static void generateQuad(Octree *nodes[4],
                            int dir,
                            Mesh *mesh,
@@ -126,6 +142,7 @@ protected:
   QefSolver qef;
   float error;
   Vertex vertex;
+  std::unordered_map<Octree*, Vertex*> faceVertices;
   std::unordered_set<Octree *> *cluster;
   glm::vec3 *clusterMin;
   glm::vec3 *clusterSize;
