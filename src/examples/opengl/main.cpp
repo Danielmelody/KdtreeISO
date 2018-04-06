@@ -194,7 +194,7 @@ int main() {
           vec3(1, 0, 0)
       ),
 //      new Difference(
-//          new AABB(vec3(-5, -5, -5), vec3(5, 5, -4.5))
+//          new AABB(vec3(-5, -5, -5), vec3(5, 5, -4.5)),
 //          new Sphere(2, vec3(0, 0, -4.75))
 //      )
 //  new Difference(
@@ -205,14 +205,14 @@ int main() {
 //      new Sphere(1.9f)
 //  )
 
-      new Union(
-          new Torus(5.f, 1.f),
-          new ExpUnion(
-              new Sphere(2, vec3(1.5, 1.5, 0)),
-              new Sphere(2, vec3(-1.5, -1.5, 0)),
-              1
-          )
-      )
+//      new Union(
+//          new Torus(5.f, 1.f),
+//          new ExpUnion(
+//              new Sphere(2, vec3(1.5, 1.5, 0)),
+//              new Sphere(2, vec3(-1.5, -1.5, 0)),
+//              1
+//          )
+//      )
 //      new Difference(
 //          new AABB(vec3(-5), vec3(5)),
 //          new Sphere(3, vec3(0, 5, 0))
@@ -223,7 +223,7 @@ int main() {
 //          new AABB(vec3(-4, -4, -1), vec3(4, 4, 1)),
 //          new AABB(vec3(-3.5f), vec3(3.5f))
 //      )
-//  new Sphere(5.f)
+  new Sphere(5.f)
   );
 
   float area = 15.f;
@@ -233,7 +233,7 @@ int main() {
   cout.setf(ios::scientific);
   int originReduction = 0;
   for (int i = 0; i < 1; ++i) {
-    float threshold = std::pow(10.f, (float) i - 0.f);
+    float threshold = std::pow(10.f, (float) i - 2.f);
     cout << "Threshold : " << threshold << endl;
     Octree::reverseExtendedSimplify(octree, &g);
     originReduction += Octree::simplify(octree, threshold, &g);
@@ -253,8 +253,8 @@ int main() {
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
 //  cout << "vertex count: " << mesh->positions.size() << endl;
 //  cout << "intersection preserving vertices count: " << intersectionPreservingVerticesCount << endl;
-  mesh->generateFlatNormals();
-
+//  mesh->generateFlatNormals();
+//
   Program program;
   if (!program.init(vert, frag)) {
     cerr << "glsl error" << endl;
@@ -274,7 +274,7 @@ int main() {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       program.use();
       setUniforms(program);
-      drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, true);
+      drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, false);
       // drawMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1], program, false, true);
       glfwSwapBuffers(window);
       inited = true;

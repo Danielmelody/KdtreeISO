@@ -6,12 +6,15 @@
 #define VOXELWORLD_OCTREE_H
 
 #include <glm/glm.hpp>
-#include "Topology.h"
-#include "Qef.h"
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <set>
+#include <tuple>
 #include <memory>
+#include "Topology.h"
+#include "Qef.h"
+#include "Utils.h"
 
 struct Vertex {
   unsigned int vertexIndex;
@@ -20,6 +23,8 @@ struct Vertex {
 public:
   Vertex() : vertexIndex(0), hermiteP(glm::vec3(0)), hermiteN(glm::vec3(0)) {}
 };
+
+typedef std::unordered_set<std::set<Vertex *>, ContainerHasher<std::set<Vertex *>>> EdgePolygonSet;
 
 class Octree {
 public:
@@ -87,18 +92,21 @@ protected:
                           Mesh *mesh,
                           Topology *geometry,
                           int &intersectionPreservingVerticesCount,
+                          EdgePolygonSet &edgePolygonSet,
                           bool intersectionFree);
   static void contourFace(Octree *nodes[2],
                           int dir,
                           Mesh *mesh,
                           Topology *geometry,
                           int &intersectionPreservingVerticesCount,
+                          EdgePolygonSet &edgePolygonSet,
                           bool intersectionFree);
   static void contourEdge(Octree *nodes[4],
                           int dir,
                           Mesh *mesh,
                           Topology *geometry,
                           int &intersectionPreservingVerticesCount,
+                          EdgePolygonSet &edgePolygonSet,
                           bool intersectionFree);
   static void combine(Octree *a, Octree *b, Topology *g);
   static void generateVertexIndices(Octree *node,
@@ -120,6 +128,7 @@ protected:
                            Mesh *mesh,
                            Topology *g,
                            int &intersectionPreservingVerticesCount,
+                           EdgePolygonSet &edgePolygonSet,
                            bool intersectionFree);
   static void generatePolygons(Octree *nodes[4], int dir, Mesh *mesh, Topology *g);
   static void detectSharpTriangles(Vertex *vertices[3], Mesh *mesh, Topology *g);
@@ -142,7 +151,7 @@ protected:
   QefSolver qef;
   float error;
   Vertex vertex;
-  std::unordered_map<Octree*, Vertex*> faceVertices;
+  std::unordered_map<Octree *, Vertex *> faceVertices;
   std::unordered_set<Octree *> *cluster;
   glm::vec3 *clusterMin;
   glm::vec3 *clusterSize;
