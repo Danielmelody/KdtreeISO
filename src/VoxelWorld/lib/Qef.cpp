@@ -7,7 +7,7 @@
 
 #define SVD_NUM_SWEEPS 5
 
-const float Tiny_Number = 1.e-8;
+const float Tiny_Number = 1.e-4;
 
 glm::vec3 svd_vmul_sym(const glm::mat3x3 &a, const glm::vec3 &v) {
   return glm::vec3(
@@ -138,6 +138,15 @@ glm::vec3 svd_solve_ATA_ATb(const glm::mat3x3 &ATA, const glm::vec3 &ATb) {
   return x;
 }
 
+void QefSolver::reset() {
+  ATA = glm::mat4(0.f);
+  ATb = glm::vec3(0.f);
+  btb = 0.f;
+  massPointSum = glm::vec3(0.f);
+  averageNormalSum = glm::vec3(0.f);
+  pointCount = 0;
+}
+
 void QefSolver::set(const QefSolver &other) {
   ATA[0][0] = other.ATA[0][0];
   ATA[1][1] = other.ATA[1][1];
@@ -169,6 +178,23 @@ void QefSolver::combine(const QefSolver &other) {
   massPointSum += other.massPointSum;
   pointCount += other.pointCount;
   averageNormalSum += other.averageNormalSum;
+  calRoughness();
+}
+
+void QefSolver::separate(const QefSolver &other) {
+  ATA[0][0] -= other.ATA[0][0];
+  ATA[1][1] -= other.ATA[1][1];
+  ATA[2][2] -= other.ATA[2][2];
+
+  ATA[0][1] -= other.ATA[0][1];
+  ATA[0][2] -= other.ATA[0][2];
+  ATA[1][2] -= other.ATA[1][2];
+
+  ATb -= other.ATb;
+  btb -= other.btb;
+  massPointSum -= other.massPointSum;
+  pointCount -= other.pointCount;
+  averageNormalSum -= other.averageNormalSum;
   calRoughness();
 }
 

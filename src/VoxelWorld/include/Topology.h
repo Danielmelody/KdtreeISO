@@ -14,6 +14,7 @@ public:
   virtual float value(const glm::vec3 &p) = 0;
   virtual bool solve(const glm::vec3 &p1, const glm::vec3 &p2, glm::vec3 &out);
   void normal(const glm::vec3 &p, glm::vec3 &out);
+  void gradient(const glm::vec3 &p, glm::vec3& out);
   glm::vec3 gradient(const glm::vec3 &p);
   float laplaceOperator(const glm::vec3 p);
   uint8_t getMaterialID();

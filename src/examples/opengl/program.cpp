@@ -132,3 +132,13 @@ bool Program::setVec3(const char *name, const glm::vec3 &uniform) {
   return true;
 }
 
+bool Program::setFloat(const char *name, float uniform) {
+  const GLint location = getUniformLocation(name);
+  if (location == -1) {
+    return false;
+  }
+
+  glUniform1f(location, uniform);
+  return true;
+}
+

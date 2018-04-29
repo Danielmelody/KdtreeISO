@@ -35,7 +35,17 @@ void Topology::normal(const glm::vec3 &p, glm::vec3& out) {
   float ny = value(p + vec3(0.f, gradient_offset, 0.f)) - value(p - vec3(0.f, gradient_offset, 0.f));
   float nz = value(p + vec3(0.f, 0.f, gradient_offset)) - value(p - vec3(0.f, 0.f, gradient_offset));
 
+  // auto g = vec3(nx, ny, nz) / gradient_offset / 2.f;
   out = normalize(vec3(nx, ny, nz));
+}
+
+void Topology::gradient(const glm::vec3 &p, glm::vec3& out) {
+
+  float nx = value(p + vec3(gradient_offset, 0.f, 0.f)) - value(p - vec3(gradient_offset, 0.f, 0.f));
+  float ny = value(p + vec3(0.f, gradient_offset, 0.f)) - value(p - vec3(0.f, gradient_offset, 0.f));
+  float nz = value(p + vec3(0.f, 0.f, gradient_offset)) - value(p - vec3(0.f, 0.f, gradient_offset));
+
+  out = vec3(nx, ny, nz) / gradient_offset / 2.f;
 }
 
 glm::vec3 Topology::gradient(const glm::vec3 &p) {

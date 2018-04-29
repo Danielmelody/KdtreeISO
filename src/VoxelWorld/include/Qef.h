@@ -16,8 +16,10 @@ struct QefSolver {
   float roughness;
   int pointCount;
 
+  void reset();
   void set(const QefSolver &other);
   void combine(const QefSolver &other);
+  void separate(const QefSolver &other);
   void add(const glm::vec3 &p, const glm::vec3 &n);
   void solve(glm::vec3 &hermiteP, float &error);
   void calRoughness();

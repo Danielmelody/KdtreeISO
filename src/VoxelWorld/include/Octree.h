@@ -15,6 +15,10 @@
 #include "Topology.h"
 #include "Qef.h"
 #include "Utils.h"
+#include "Mesh.h"
+#include "Kdtree.h"
+
+class SummedAreaOctree;
 
 struct Vertex {
   unsigned int vertexIndex;
@@ -28,20 +32,23 @@ typedef std::unordered_set<std::set<Vertex *>, ContainerHasher<std::set<Vertex *
 
 class Octree {
 public:
-  static Octree *buildWithTopology(glm::vec3 min,
-                                   glm::vec3 size,
-                                   int depth,
-                                   Topology *topology,
-                                   int &loselessCut);
+  friend class SatOctree;
+  static void setCellSize(float size);
+  static Octree *buildWithTopology(OctCodeType minCode, int depth, Topology *topology, int &loselessCut);
+  static void getSum(Octree *root, OctCodeType minPos, OctCodeType maxPos, QefSolver& out);
+  static Kdtree *generateKdtree(Octree *root, OctCodeType minCode, OctCodeType maxCode, int depth);
   static int simplify(Octree *root, float threshold, Topology *geometry);
   static void reverseExtendedSimplify(Octree *root, Topology *g);
   static Octree *extendedSimplify(Octree *root,
                                   float threshold,
                                   Topology *geometry,
                                   int &count);
-  static Octree *edgeClassifier(Octree *root,
-                                float threshold,
-                                Topology *geometry);
+  static Octree *OptionalHierarchyClustering(Octree *root,
+                                             float threshold,
+                                             Topology *geometry,
+                                             int &count);
+  static void calClusterBounds(std::unordered_set<Octree *> *cluster);
+  static Octree *edgeClassifier(Octree *root, Topology *geometry, float threshold);
   static void edgeCluster(Octree *root,
                           Topology *geometry,
                           int &count,
@@ -66,7 +73,6 @@ public:
   Octree(glm::vec3 min, glm::vec3 size, int depth) :
       childIndex(-1),
       isLeaf(false),
-      internal(false),
       min(min),
       size(size),
       depth(depth) {
@@ -87,6 +93,7 @@ public:
 //      delete clusterQef;
 //    }
   }
+  static float cellSize;
 protected:
   static void contourCell(Octree *root,
                           Mesh *mesh,
@@ -123,7 +130,7 @@ protected:
   static bool isInterFreeCondition2Faild(const std::vector<Vertex *> &polygons,
                                          const glm::vec3 &p1,
                                          const glm::vec3 &p2);
-  static void generateQuad(Octree *nodes[4],
+  static void generateQuad(Octree **nodes,
                            int dir,
                            Mesh *mesh,
                            Topology *g,
@@ -133,22 +140,19 @@ protected:
   static void generatePolygons(Octree *nodes[4], int dir, Mesh *mesh, Topology *g);
   static void detectSharpTriangles(Vertex *vertices[3], Mesh *mesh, Topology *g);
   static bool getSelfQef(Octree *node, Topology *geometry, QefSolver &qef);
-  static Octree *buildRecursively(glm::vec3 min, glm::vec3 size, int depth, Topology *geometry);
-  static Octree *losslessCompress(Octree *root,
-                                  float threshold,
-                                  Topology *geometry,
-                                  int &count);
-
+  static Octree *samplerBuild(OctCodeType minCode, int depth, Topology *geometry);
   static void calHermite(Octree *node, QefSolver *qef, Topology *g, Vertex *vertex);
   Octree *children[8];
   int childIndex;
   uint8_t cornerSigns[8];
   bool isLeaf;
-  bool internal;
   glm::vec3 min;
   glm::vec3 size;
+  OctCodeType minCode;
+  OctCodeType maxCode;
   int depth;
   QefSolver qef;
+  QefSolver intergral;
   float error;
   Vertex vertex;
   std::unordered_map<Octree *, Vertex *> faceVertices;

@@ -3,190 +3,22 @@
 //
 #include <unordered_map>
 #include <unordered_set>
+#include <numeric>
 #include <set>
 #include <glm/glm.hpp>
 #include <glm/gtx/intersect.hpp>
 #include <glm/gtx/fast_square_root.hpp>
-#include <Mesh.h>
 #include "Octree.h"
+#include "Mesh.h"
 #include "Utils.h"
+#include "Indicators.h"
 
 using namespace glm;
 
-const vec3 &min_offset_subdivision(int i) {
-  static const vec3 offsets[8] = {
-      vec3(0.f, 0.f, 0.f),
-      vec3(0.f, 0.f, 1.f),
-      vec3(0.f, 1.f, 0.f),
-      vec3(0.f, 1.f, 1.f),
-      vec3(1.f, 0.f, 0.f),
-      vec3(1.f, 0.f, 1.f),
-      vec3(1.f, 1.f, 0.f),
-      vec3(1.f, 1.f, 1.f),
-  };
-  assert(i >= 0 && i < 8);
-  return offsets[i];
-};
+float Octree::cellSize = 0.2f;
 
-const vec3 &directionMap(int i) {
-  static const vec3 offsets[3] = {
-      vec3(1.f, 0.f, 0.f),
-      vec3(0.f, 1.f, 0.f),
-      vec3(0.f, 0.f, 1.f),
-  };
-  assert(i >= 0 && i < 3);
-  return offsets[i];
-}
-
-// from original dc implementation
-
-const int edge_map[12][2] = {
-    {0, 4}, {1, 5}, {2, 6}, {3, 7},    // x-axis
-    {0, 2}, {1, 3}, {4, 6}, {5, 7},    // y-axis
-    {0, 1}, {2, 3}, {4, 5}, {6, 7}     // z-axis
-};
-
-const int faceNodeOrder[3][4][4] = {
-    {{0, 0, 1, 1}, {0, 0, 1, 1}, {0, 1, 1, 0}, {0, 1, 1, 0}},
-    {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 1, 1}, {0, 0, 1, 1}},
-    {{0, 0, 1, 1}, {0, 0, 1, 1}, {0, 1, 1, 0}, {0, 1, 1, 0}},
-};
-
-const int cellProcFaceMask[12][3] =
-    {{0, 4, 0}, {1, 5, 0}, {2, 6, 0}, {3, 7, 0}, {0, 2, 1}, {4, 6, 1}, {1, 3, 1}, {5, 7, 1}, {0, 1, 2}, {2, 3, 2},
-     {4, 5, 2}, {6, 7, 2}};
-
-const int cellProcEdgeMask[6][5] =
-    {{0, 2, 3, 1, 0}, {4, 6, 7, 5, 0}, {0, 1, 5, 4, 1}, {2, 3, 7, 6, 1}, {0, 4, 6, 2, 2}, {1, 5, 7, 3, 2}};
-
-const int faceProcFaceMask[3][4][3] = {
-    {{4, 0, 0}, {5, 1, 0}, {6, 2, 0}, {7, 3, 0}},
-    {{2, 0, 1}, {6, 4, 1}, {3, 1, 1}, {7, 5, 1}},
-    {{1, 0, 2}, {3, 2, 2}, {5, 4, 2}, {7, 6, 2}}
-};
-
-const int edgeTestNodeOrder[4][2] = {{0, 1}, {3, 2}, {1, 2}, {0, 3}};
-
-const vec3 &faceSubDivision(int dir, int i) {
-  static const vec3 offsets[3][4] = {
-      {vec3(0.f, 0.f, 0.f), vec3(0.f, 0.f, 1.f), vec3(0.f, 1.f, 0.f), vec3(0.f, 1.f, 1.f),},
-      {vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 0.f), vec3(0.f, 0.f, 1.f), vec3(1.f, 0.f, 1.f),},
-      {vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f), vec3(1.f, 0.f, 0.f), vec3(1.f, 1.f, 0.f),},
-  };
-  assert(i >= 0 && i < 4);
-  return offsets[dir][i];
-};
-
-const int faceProcEdgeMask[3][4][6] = {
-    {{1, 4, 5, 1, 0, 1}, {1, 6, 7, 3, 2, 1}, {0, 4, 0, 2, 6, 2}, {0, 5, 1, 3, 7, 2}},
-    {{0, 2, 0, 1, 3, 0}, {0, 6, 4, 5, 7, 0}, {1, 2, 6, 4, 0, 2}, {1, 3, 7, 5, 1, 2}},
-    {{1, 1, 3, 2, 0, 0}, {1, 5, 7, 6, 4, 0}, {0, 1, 0, 4, 5, 1}, {0, 3, 2, 6, 7, 1}}
-};
-
-const vec3 &edgeProcDir(int i, int j) {
-  const static vec3 dirs[3][4] = {
-      {vec3(0.f, -1.f, -1.f), vec3(0.f, -1.f, 1.f), vec3(0.f, 1.f, 1.f), vec3(0.f, 1.f, -1.f),},
-      {vec3(-1.f, 0.f, -1.f), vec3(-1.f, 0.f, 1.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, -1.f),},
-      {vec3(-1.f, -1.f, 0.f), vec3(1.f, -1.f, 0.f), vec3(1.f, 1.f, 0.f), vec3(-1.f, 1.f, 0.f),},
-  };
-  assert(i >= 0 && i < 3 && i >= 0 && i < 4);
-  return dirs[i][j];
-};
-
-const int edgeProcEdgeMask[3][2][4] = {
-    {{3, 1, 0, 2}, {7, 5, 4, 6}},
-    {{5, 4, 0, 1}, {7, 6, 2, 3}},
-    {{6, 2, 0, 4}, {7, 3, 1, 5}},
-};
-
-const int planeSpreadingDir[3][2][4] = {
-    {{0, 2, 3, 1}, {4, 6, 7, 5}},
-    {{0, 1, 5, 4}, {2, 3, 7, 6}},
-    {{0, 4, 6, 2}, {1, 5, 7, 2}},
-};
-//
-//const int planeSpreadingMask[8][8] = {
-//    {0, 1, 2, 4, 3, 5, 6, 7},
-//    {1, 0, 3, 5, 2, 4, 7, 6},
-//    {2, 0, 3, 6, 1, 4, 7, 5},
-//    {3, 1, 2, 7, 0, 5, 6, 4},
-//    {4, 0, 5, 6, 1, 2, 7, 3},
-//    {5, 1, 4, 7, 0, 3, 6, 2},
-//    {6, 2, 4, 7, 0, 3, 5, 1},
-//    {7, 3, 5, 6, 1, 2, 4, 0},
-//};
-//
-//const int adjacentNodes[8][8] = {
-//    {0, 1, 1, 0, 1, 0, 0, 0,},
-//    {1, 0, 0, 1, 0, 1, 0, 0,},
-//    {1, 0, 0, 1, 0, 0, 1, 0,},
-//    {0, 1, 1, 0, 0, 0, 0, 1,},
-//    {1, 0, 0, 0, 0, 1, 1, 0,},
-//    {0, 1, 0, 0, 1, 0, 0, 1,},
-//    {0, 0, 1, 0, 1, 0, 0, 1,},
-//    {0, 0, 0, 1, 0, 1, 1, 0,},
-//};
-
-const int dirRelatedEdge[8][8][3] = {
-    {
-        {-1, -1, -1}, {-1, 2, 6}, {-1, 1, 10}, {-1, -1, 0},
-        {-1, 5, 9}, {-1, -1, 4}, {-1, -1, 8}, {0, 4, 8},
-    },
-    {
-        {-1, 3, 11}, {-1, -1, -1}, {-1, -1, 1}, {-1, 0, 10},
-        {-1, -1, 5}, {-1, 4, 9}, {1, 5, 8}, {-1, -1, 8},
-    },
-    {
-        {-1, 11, 3}, {-1, -1, 2}, {-1, -1, -1}, {-1, 0, 6},
-        {-1, -1, 9}, {2, 4, 9}, {-1, 5, 8}, {-1, -1, 4},
-    },
-    {
-        {-1, -1, 3}, {-1, 2, 11}, {-1, 1, 7}, {-1, -1, -1},
-        {3, 5, 9}, {-1, -1, 9}, {-1, -1, 5}, {-1, 4, 8},
-    },
-    {
-        {-1, 7, 11}, {-1, -1, 5}, {-1, -1, 10}, {0, 6, 10},
-        {-1, -1, -1}, {-1, 2, 4}, {-1, 1, 8}, {-1, -1, 0},
-    },
-    {
-        {-1, -1, 7}, {-1, 0, 11}, {1, 7, 10}, {-1, -1, 10},
-        {-1, 3, 5}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, 8}
-    },
-    {
-        {-1, -1, 11}, {2, 6, 11}, {-1, 7, 10}, {-1, -1, 6},
-        {-1, 3, 9}, {-1, -1, 2}, {-1, -1, -1}, {-1, 1, 4},
-    },
-    {
-        {3, 7, 11}, {-1, -1, 11}, {-1, -1, 7}, {-1, 6, 10},
-        {-1, -1, 3}, {-1, 2, 9}, {-1, 1, 5}, {-1, -1, -1},
-    }
-};
-
-const int processEdgeMask[3][4] = {{3, 2, 1, 0}, {7, 5, 6, 4}, {11, 10, 9, 8}};
-
-//const int triangleIndices[6] = {0, 1, 2, 0, 2, 3};
-//const int triangleIndicesFlip[6] = {0, 3, 2, 0, 2, 1};
-
-glm::vec3 min_select(glm::vec3 a, glm::vec3 b, bool &flag) {
-  if (a.x >= b.x && a.y >= b.y && a.z >= b.z) {
-    return b;
-  }
-  if (a.x <= b.x && a.y <= b.y && a.z <= b.z) {
-    return a;
-  }
-  flag = false;
-  return vec3();
-}
-
-glm::vec3 max_select(glm::vec3 a, glm::vec3 b, bool &flag) {
-  if (a.x >= b.x && a.y >= b.y && a.z >= b.z) {
-    return a;
-  }
-  if (a.x <= b.x && a.y <= b.y && a.z <= b.z) {
-    return b;
-  }
-  flag = false;
-  return vec3();
+void Octree::setCellSize(float size) {
+  cellSize = size;
 }
 
 bool Octree::getSelfQef(Octree *node, Topology *g, QefSolver &qef) {
@@ -219,72 +51,117 @@ bool Octree::getSelfQef(Octree *node, Topology *g, QefSolver &qef) {
   return true;
 }
 
-Octree *Octree::buildWithTopology(
-    glm::vec3 min,
-    vec3 size,
-    int depth,
-    Topology *topology,
-    int &losslessCut) {
-  auto root = buildRecursively(min, size, depth, topology);
-  root = losslessCompress(root, -1, topology, losslessCut);
+Octree *Octree::buildWithTopology(OctCodeType minCode, int depth, Topology *topology, int &losslessCut) {
+  auto root = samplerBuild(minCode, depth, topology);
+  // root = losslessCompress(root, -1, topology, losslessCut);
   return root;
 }
 
-Octree *Octree::buildRecursively(glm::vec3 min, vec3 size, int depth, Topology *topology) {
+Octree *Octree::samplerBuild(OctCodeType minCode, int depth, Topology *topology) {
+  vec3 size = vec3(Octree::cellSize * (1 << (depth - 1)));
+  vec3 min = codeToPos(minCode, Octree::cellSize);
   auto root = new Octree(min, size, depth);
   assert(depth > 0);
+  root->minCode = minCode;
+  OctCodeType sizeCode = OctCodeType(static_cast<uint16_t>(1 << (depth - 1)));
+  root->maxCode = minCode + sizeCode;
+  bool homogeneous = true;
   if (depth == 1) {
     if (!getSelfQef(root, topology, root->qef)) {
-      root->internal = true;
-      return root;
+      delete root;
+      return nullptr;
     }
-    calHermite(root, &root->qef, topology, &root->vertex);
-    root->clusterQef->set(root->qef);
     root->isLeaf = true;
-    return root;
+    homogeneous = false;
+  } else {
+    OctCodeType subSizeCode = OctCodeType(static_cast<uint16_t >(1 << (depth - 2)));
+    for (int i = 0; i < 8; ++i) {
+      OctCodeType subMinCode = minCode + subSizeCode * min_offset_subdivision_code(i);
+      root->children[i] =
+          samplerBuild(subMinCode, depth - 1, topology);
+      homogeneous = homogeneous && !root->children[i];
+      if (root->children[i]) {
+        root->cornerSigns[i] = root->children[i]->cornerSigns[i];
+        root->children[i]->childIndex = static_cast<int8_t>(i);
+        root->qef.combine(root->children[i]->qef);
+      }
+    }
+    root->isLeaf = false;
   }
-  for (int i = 0; i < 8; ++i) {
-    root->children[i] =
-        buildRecursively(min + min_offset_subdivision(i) * size / 2.f, size / 2.f, depth - 1, topology);
-    root->cornerSigns[i] = root->children[i]->cornerSigns[i];
-    root->children[i]->childIndex = static_cast<int8_t>(i);
+  if (homogeneous) {
+    delete root;
+    return nullptr;
   }
-  root->isLeaf = false;
+  calHermite(root, &root->qef, topology, &root->vertex);
+  root->clusterQef->set(root->qef);
   return root;
 }
 
-Octree *Octree::losslessCompress(Octree *root,
-                                 float threshold,
-                                 Topology *topology,
-                                 int &count) {
+void Octree::getSum(Octree *root, OctCodeType minPos, OctCodeType maxPos, QefSolver &out) {
   if (!root) {
-    return nullptr;
+    return;
   }
-  if (root->isLeaf) {
-    if (root->internal) {
-      count++;
-      return nullptr;
-    }
-    return root;
+  if (glm::any(glm::greaterThanEqual(minPos, maxPos))) {
+    return;
   }
-
-  bool internal = true;
-
+  if (glm::any(glm::greaterThanEqual(minPos, root->maxCode)) || glm::any(glm::lessThanEqual(maxPos, root->minCode))) {
+    return;
+  }
+  minPos = glm::max(root->minCode, minPos);
+  maxPos = glm::min(root->maxCode, maxPos);
+  if (minPos == root->minCode && maxPos == root->maxCode) {
+    out.combine(root->qef);
+    return;
+  }
   for (int i = 0; i < 8; ++i) {
-
-    auto result = losslessCompress(root->children[i], threshold, topology, count);
-    if (result == nullptr) {
-      root->children[i] = nullptr;
-    }
-    internal = internal && (root->children[i] == nullptr);
+    getSum(root->children[i], minPos, maxPos, out);
   }
+}
 
-  if (internal) {
-    count++;
+Kdtree *Octree::generateKdtree(Octree *root, OctCodeType minCode, OctCodeType maxCode, int depth) {
+  if (glm::any(glm::greaterThanEqual(minCode, maxCode))) {
     return nullptr;
   }
+  QefSolver sum;
+  getSum(root, minCode, maxCode, sum);
+  if (sum.pointCount == 0) {
+    return nullptr;
+  }
+  OctCodeType bestLeftMinCode, bestRightMinCode, bestLeftMaxCode, bestRightMaxCode;
+  float minErrorDiff = 1e20;
+  QefSolver leftSum, rightSum;
+  for (int dir = 0; dir < 3; ++dir) {
+    for (int axis = minCode[dir] + 1; axis < maxCode[dir]; ++axis) {
+      OctCodeType leftMinCode = minCode;
 
-  return root;
+      OctCodeType rightMinCode = minCode;
+      rightMinCode[dir] = axis;
+
+      OctCodeType leftMaxCode = maxCode;
+
+      leftMaxCode[dir] = axis;
+      OctCodeType rightMaxCode = maxCode;
+      glm::vec3 leftApproximate, rightApproximate;
+      leftSum.reset();
+      rightSum.reset();
+      float leftError, rightError;
+      getSum(root, leftMinCode, leftMaxCode, leftSum);
+      getSum(root, rightMinCode, rightMaxCode, rightSum);
+      leftSum.solve(leftApproximate, leftError);
+      rightSum.solve(rightApproximate, rightError);
+      if (abs(rightError - leftError) < minErrorDiff) {
+        minErrorDiff = abs(rightError - leftError);
+        bestLeftMinCode = leftMinCode;
+        bestLeftMaxCode = leftMaxCode;
+        bestRightMinCode = rightMinCode;
+        bestRightMaxCode = rightMaxCode;
+      }
+    }
+  }
+  auto kd = new Kdtree(sum, bestLeftMinCode, bestRightMaxCode, depth);
+  kd->left = generateKdtree(root, bestLeftMinCode, bestLeftMaxCode, depth + 1);
+  kd->right = generateKdtree(root, bestRightMinCode, bestRightMaxCode, depth + 1);
+  return kd;
 }
 
 int Octree::simplify(Octree *root, float threshold, Topology *geometry) {
@@ -294,24 +171,15 @@ int Octree::simplify(Octree *root, float threshold, Topology *geometry) {
   if (root->isLeaf) {
     return 0;
   }
-  QefSolver sum;
   int reduction = 0;
   int childCount = 0;
   for (auto &child : root->children) {
     reduction += simplify(child, threshold, geometry);
     if (child) {
       childCount++;
-      sum.combine(child->qef);
     }
   }
-  vec3 tempP;
-  sum.solve(tempP, root->error);
-  root->qef.set(sum);
-  float value = geometry->value(tempP);
-  value = 0.f;
-  if (root->error + abs(value) < threshold) {
-    // getSelfQef(root, geometry, root->qef);
-    calHermite(root, &sum, geometry, &root->vertex);
+  if (root->error < threshold) {
     reduction += childCount - 1;
     for (auto &child: root->children) {
       child = nullptr;
@@ -347,20 +215,19 @@ Octree *Octree::extendedSimplify(Octree *root,
                                  float threshold,
                                  Topology *geometry,
                                  int &count) {
-  edgeClassifier(root, threshold, geometry);
+  edgeClassifier(root, geometry, threshold);
   std::unordered_set<std::unordered_set<Octree *> *> clusters;
+  OptionalHierarchyClustering(root, threshold, geometry, count);
   edgeCluster(root, geometry, count, clusters);
   return root;
 }
 
-Octree *Octree::edgeClassifier(Octree *root,
-                               float threshold,
-                               Topology *geometry) {
+Octree *Octree::edgeClassifier(Octree *root, Topology *geometry, float threshold) {
   if (!root || root->isLeaf) {
     return root;
   }
   for (int i = 0; i < 8; ++i) {
-    root->children[i] = edgeClassifier(root->children[i], threshold, geometry);
+    root->children[i] = edgeClassifier(root->children[i], geometry, threshold);
   }
   for (int i = 0; i < 12; ++i) {
     auto &a = root->children[cellProcFaceMask[i][0]];
@@ -376,6 +243,18 @@ Octree *Octree::edgeClassifier(Octree *root,
                  geometry,
                  faceMin,
                  root->size.x / 2.f);
+  }
+  int shrinkCount = 0;
+  int childCount = 0;
+  std::unordered_set<std::unordered_set<Octree *> *> clusters;
+  float minError = 1000000.f;
+  for (int i = 0; i < 8; ++i) {
+    if (root->children[i] && clusters.find(root->cluster) == clusters.end()) {
+      clusters.insert(root->cluster);
+      shrinkCount += root->cluster->size() - 1;
+      childCount++;
+      minError = std::min(minError, root->clusterQef->getError(root->clusterVertex->hermiteP));
+    }
   }
   return root;
 }
@@ -401,6 +280,77 @@ void Octree::edgeCluster(Octree *root,
   for (int i = 0; i < 8; ++i) {
     edgeCluster(root->children[i], geometry, count, clusters);
   }
+}
+
+Octree *Octree::OptionalHierarchyClustering(Octree *root, float threshold, Topology *geometry, int &count) {
+//  for(int i = 0; i  < 8; ++i) {
+//
+//  }
+  if (!root || root->isLeaf) {
+    return nullptr;
+  }
+  for (int i = 0; i < 8; ++i) {
+    OptionalHierarchyClustering(root->children[i], threshold, geometry, count);
+  }
+  bool clusterable = true;
+  std::unordered_set<std::unordered_set<Octree *> *> internalClusters;
+  float maxChildClusterError = 0.f;
+  if (root->error < threshold) {
+    // glm
+    for (int i = 0; i < 8; ++i) {
+      if (root->children[i] && root->cluster->size() > 1) {
+        vec3 clusterMin = *root->children[i]->clusterMin;
+        vec3 clusterMax = *root->children[i]->clusterMin + *root->children[i]->clusterSize;
+        vec3 cellMin = root->children[i]->min;
+        vec3 cellMax = root->children[i]->min + root->children[i]->size;
+        int validAxisNum = 0;
+        bool intermediately = false;
+        for (int i = 0; i < 3; ++i) {
+          if (cellMin[i] <= clusterMin[i] && cellMax[i] >= clusterMax[i]) {
+            validAxisNum++;
+          } else if (cellMin[i] > clusterMin[i] && cellMax[i] < clusterMax[i]) {
+            intermediately = true;
+          }
+        }
+        if (!(validAxisNum == 2 && !intermediately)) {
+          clusterable = false;
+        }
+        maxChildClusterError = std::max(root->error, maxChildClusterError);
+        if (validAxisNum == 3) {
+          internalClusters.insert(root->children[i]->cluster);
+        }
+      }
+    }
+    if (clusterable && !internalClusters.empty()) {
+      for (int i = 0; i < 8; ++i) {
+        auto &child = root->children[i];
+        if (child && child->cluster->size() > 1) {
+          child->cluster->erase(child);
+          calClusterBounds(child->cluster);
+          child->clusterQef->separate(child->qef);
+          child = nullptr;
+          count++;
+        }
+      }
+      count--;
+      root->isLeaf = true;
+    }
+    return root;
+  }
+  return root;
+}
+
+void Octree::calClusterBounds(std::unordered_set<Octree *> *cluster) {
+  glm::vec3 min = std::accumulate(std::next(cluster->begin()),
+                                  cluster->end(),
+                                  (*cluster->begin())->min,
+                                  [](glm::vec3 min, Octree *b) -> glm::vec3 { return glm::min(min, b->min); });
+  glm::vec3 max = std::accumulate(std::next(cluster->begin()),
+                                  cluster->end(),
+                                  (*cluster->begin())->min + (*cluster->begin())->size,
+                                  [](glm::vec3 max, Octree *b) { return glm::max(max, b->min + b->size); });
+  *(*cluster->begin())->clusterMin = min;
+  *(*cluster->begin())->clusterSize = max - min;
 }
 
 void Octree::cubeExtensionTest(Octree *a, Octree *b, int dir, float minSize) {
@@ -443,7 +393,6 @@ void Octree::edgeCollapse(Octree *&a,
         edgeCollapse(a->children[faceProcFaceMask[dir][i][0]], b, dir, threshold, geometry, subMin, subSize);
       }
     }
-    return;
   }
 
   auto lastfaceNodeEndSign = -1;
@@ -538,7 +487,12 @@ void Octree::contourCell(Octree *root,
     return;
   }
   for (int i = 0; i < 8; ++i) {
-    contourCell(root->children[i], mesh, geometry, intersectionPreservingVerticesCount, edgePolygonSet, intersectionFree);
+    contourCell(root->children[i],
+                mesh,
+                geometry,
+                intersectionPreservingVerticesCount,
+                edgePolygonSet,
+                intersectionFree);
   }
   for (int i = 0; i < 12; ++i) {
     Octree *nodes[2] = {
@@ -816,7 +770,7 @@ bool Octree::isInterFreeCondition2Faild(const std::vector<Vertex *> &polygons, c
   }
 }
 
-void Octree::generateQuad(Octree *nodes[4],
+void Octree::generateQuad(Octree **nodes,
                           int dir,
                           Mesh *mesh,
                           Topology *g,
@@ -920,11 +874,11 @@ void Octree::generateQuad(Octree *nodes[4],
 
   float v1 = g->value(p1);
   float v2 = g->value(p2);
-  if ((v1 >= 0 && v2 >= 0) || (v1 < 0 && v2 < 0)) {
+  if ((v1 > 0 && v2 > 0) || (v1 < 0 && v2 < 0)) {
     return;
   }
 
-  std::set<Vertex*> polygonSet;
+  std::set<Vertex *> polygonSet;
 
   for (auto v : polygon) {
     polygonSet.insert(v);
@@ -947,12 +901,11 @@ void Octree::generateQuad(Octree *nodes[4],
     condition2Failed = condition2Failed && reverseCondition2Failed;
   }
   if (intersectionFree && (condition1Failed || condition2Failed)) {
+    intersectionPreservingVerticesCount++;
     polygon.clear();
     if (!condition2Failed) {
       std::vector<int> concaveFlags;
       std::vector<Vertex *> convexPart;
-      // edge vertex
-      intersectionPreservingVerticesCount++;
       int concaveCount = 0;
       for (int i = 0; i < 4; ++i) {
         int index = (i + firstConcaveFaceVertex) % 4;
@@ -983,8 +936,6 @@ void Octree::generateQuad(Octree *nodes[4],
           polygon.push_back(a->clusterVertex);
           auto faceVIter = a->faceVertices.find(b);
           if (faceVIter != a->faceVertices.end()) {
-            // face vertex
-            intersectionPreservingVerticesCount++;
             polygon.push_back(faceVIter->second);
             polygon.push_back(faceVIter->second);
           }
@@ -997,6 +948,12 @@ void Octree::generateQuad(Octree *nodes[4],
         };
         detectSharpTriangles(triangle, mesh, g);
       }
+//      Vertex* p1v = new Vertex();
+//      Vertex* p2v = new Vertex();
+//      calVertex(p1v, p1, mesh, g);
+//      calVertex(p2v, p2, mesh, g);
+//      Vertex* edge[] = {p1v, p1v, p2v};
+//      detectSharpTriangles(edge, mesh, g);
     }
   } else {
     for (int i = 2; i < polygon.size(); ++i) {

@@ -10,6 +10,7 @@
 #include "Topology.h"
 #include "Octree.h"
 #include "program.h"
+#include "Utils.h"
 
 using glm::vec3;
 using glm::mat4;
@@ -40,10 +41,13 @@ const char *frag =
     "\n"
     "uniform vec3 lightDir;\n"
     "uniform vec3 albedo;\n"
+    "uniform float specular;\n"
     "\n"
     "void main() {\n"
-    "    color = albedo * max(dot(fragNormal, lightDir), 0.2f);\n"
-    "    // color = (1.0 - albedo) * (step(dot(fragNormal,vec3(0, 0, -1)), 0.0) * 0.8 + 0.2);\n"
+    "    vec3 normal = normalize(fragNormal);"
+    "    vec3 h = normalize(lightDir + vec3(0, 0, 1));"
+    "    color = albedo * mix(max(dot(normal, lightDir), 0.2f) , pow(dot(normal, h), 64.f), specular);\n"
+    "    // color = (1.0 - albedo) * (step(dot(normal,vec3(0, 0, -1)), 0.0) * 0.8 + 0.2);\n"
     "}";
 
 float cameraOffset = 20.f;
@@ -112,6 +116,7 @@ void setUniforms(Program &program) {
   program.setMat4("m", m);
   program.setMat4("mvp", p * v * m);
   program.setVec3("albedo", vec3(1.0f, 1.0f, 1.0f));
+  program.setFloat("specular", 0.f);
   program.setVec3("lightDir", normalize(vec3(0.f, 0.f, 1.f)));
 }
 
@@ -184,18 +189,18 @@ int main() {
   GLfloat lineWidthRange[2] = {0.0f, 0.0f};
   glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
 
-  GLuint positionsBuffers[2];
-  GLuint normalsBuffers[2];
-  GLuint indicesBuffers[2];
+  GLuint positionsBuffers[3];
+  GLuint normalsBuffers[3];
+  GLuint indicesBuffers[3];
   Transform g(
       glm::rotate(
           glm::translate(mat4(1.f), vec3(0, 0, 0)),
-          glm::radians(0.f),
-          vec3(1, 0, 0)
+          glm::radians(30.f),
+          vec3(1, 1, 0)
       ),
 //      new Difference(
-//          new AABB(vec3(-5, -5, -5), vec3(5, 5, -4.5)),
-//          new Sphere(2, vec3(0, 0, -4.75))
+          // new AABB(vec3(-4.9, -4.9, -1.5), vec3(4.9, 4.9, -0.5))
+          // new Sphere(5)
 //      )
 //  new Difference(
 //      new Union(
@@ -218,42 +223,51 @@ int main() {
 //          new Sphere(3, vec3(0, 5, 0))
 //      )
 //      new Heart(5)
-//      new AABB(vec3(-4), vec3(4))
+//      new AABB(vec3(-5), vec3(5))
 //      new Difference(
-//          new AABB(vec3(-4, -4, -1), vec3(4, 4, 1)),
-//          new AABB(vec3(-3.5f), vec3(3.5f))
+//          new AABB(vec3(-4, -4, -0.2), vec3(4, 4, 0.2)),
+//          new AABB(vec3(-1.5f), vec3(1.5f))
 //      )
-  new Sphere(5.f)
+      new Sphere(4.3f)
   );
-
-  float area = 15.f;
   int svoCull = 0;
-  auto octree = Octree::buildWithTopology(glm::vec3(-area / 2.f), vec3(area), 7, &g, svoCull);
+
+  int depth = 5;
+  Octree::setCellSize(1.f);
+  OctCodeType sizeCode = OctCodeType(1 << (depth - 1));
+
+  auto octree = Octree::buildWithTopology(-sizeCode / 2, depth, &g, svoCull);
+  // auto satOct = SatOctree::initialBuildFromOctree(octree, encodePosition(OctCodeType(0)), 7);
+  auto kdtree = Octree::generateKdtree(octree, -sizeCode / 2, sizeCode / 2, 0);
+  auto *kdtreeVisual = new Mesh();
+  Kdtree::drawKdtree(kdtree, kdtreeVisual);
+
+  QefSolver sum;
 
   cout.setf(ios::scientific);
-  int originReduction = 0;
-  for (int i = 0; i < 1; ++i) {
-    float threshold = std::pow(10.f, (float) i - 2.f);
-    cout << "Threshold : " << threshold << endl;
-    Octree::reverseExtendedSimplify(octree, &g);
-    originReduction += Octree::simplify(octree, threshold, &g);
-    cout << "origin reduction : " << originReduction << endl;
-    int extendedReduction = 0;
-    Octree::extendedSimplify(octree, threshold, &g, extendedReduction);
-    cout << "extended reduction : " << extendedReduction << endl;
-  }
+//  int originReduction = 0;
+//  for (int i = 0; i < 1; ++i) {
+//    float threshold = std::pow(10.f, (float) i - 1.f);
+//    cout << "Threshold : " << threshold << endl;
+//    originReduction += Octree::simplify(octree, threshold, &g);
+//    cout << "origin reduction : " << originReduction << endl;
+//    int extendedReduction = 0;
+//    Octree::extendedSimplify(octree, threshold, &g, extendedReduction);
+//    cout << "extended reduction : " << extendedReduction << endl;
+//  }
 
   auto *octreeVisual = new Mesh();
   unordered_set<Vertex *> visualUtil;
   Octree::drawOctrees(octree, octreeVisual, visualUtil);
-
   int intersectionPreservingVerticesCount = 0;
+  bool intersectionFree = false;
 
-  Mesh *mesh = Octree::generateMesh(octree, &g, intersectionPreservingVerticesCount, true);
+  Mesh *mesh = Octree::generateMesh(octree, &g, intersectionPreservingVerticesCount, intersectionFree);
+  cout << "intersectionFree: " << (intersectionFree ? "true" : "false") << endl;
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
 //  cout << "vertex count: " << mesh->positions.size() << endl;
-//  cout << "intersection preserving vertices count: " << intersectionPreservingVerticesCount << endl;
-//  mesh->generateFlatNormals();
+  cout << "intersection contours: " << intersectionPreservingVerticesCount << endl;
+  mesh->generateFlatNormals();
 //
   Program program;
   if (!program.init(vert, frag)) {
@@ -263,6 +277,7 @@ int main() {
 
   addMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0]);
   addMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1]);
+  addMesh(kdtreeVisual, positionsBuffers[2], normalsBuffers[2], indicesBuffers[2]);
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
@@ -274,8 +289,9 @@ int main() {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       program.use();
       setUniforms(program);
-      drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, false);
+      drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, true);
       // drawMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1], program, false, true);
+      drawMesh(kdtreeVisual, positionsBuffers[2], normalsBuffers[2], indicesBuffers[2], program, false, true);
       glfwSwapBuffers(window);
       inited = true;
     }
@@ -290,6 +306,9 @@ int main() {
   glDeleteBuffers(1, &positionsBuffers[1]);
   glDeleteBuffers(1, &normalsBuffers[1]);
   glDeleteBuffers(1, &indicesBuffers[1]);
+  glDeleteBuffers(1, &positionsBuffers[2]);
+  glDeleteBuffers(1, &normalsBuffers[2]);
+  glDeleteBuffers(1, &indicesBuffers[2]);
   glfwTerminate();
   return 0;
 }

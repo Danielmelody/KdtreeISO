@@ -17,6 +17,7 @@ public:
   void use();
   bool setMat4(const char *name, const glm::mat4 &uniform);
   bool setVec3(const char *name, const glm::vec3 &uniform);
+  bool setFloat(const char *name, float uniform);
 
 private:
 
