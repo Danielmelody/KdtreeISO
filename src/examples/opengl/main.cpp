@@ -195,7 +195,7 @@ int main() {
   Transform g(
       glm::rotate(
           glm::translate(mat4(1.f), vec3(0, 0, 0)),
-          glm::radians(30.f),
+          glm::radians(0.f),
           vec3(1, 1, 0)
       ),
 //      new Difference(
@@ -219,7 +219,7 @@ int main() {
 //          )
 //      )
 //      new Difference(
-//          new AABB(vec3(-5), vec3(5)),
+//          new AABB(vec3(-4.3f), vec3(4.3f))
 //          new Sphere(3, vec3(0, 5, 0))
 //      )
 //      new Heart(5)
@@ -232,15 +232,16 @@ int main() {
   );
   int svoCull = 0;
 
-  int depth = 5;
-  Octree::setCellSize(1.f);
-  OctCodeType sizeCode = OctCodeType(1 << (depth - 1));
+  int depth = 6;
+  Octree::setCellSize(0.5f);
+  PositionCode sizeCode = PositionCode(1 << (depth - 1));
 
   auto octree = Octree::buildWithTopology(-sizeCode / 2, depth, &g, svoCull);
-  // auto satOct = SatOctree::initialBuildFromOctree(octree, encodePosition(OctCodeType(0)), 7);
+  // auto satOct = SatOctree::initialBuildFromOctree(octree, encodePosition(PositionCode(0)), 7);
   auto kdtree = Octree::generateKdtree(octree, -sizeCode / 2, sizeCode / 2, 0);
+
   auto *kdtreeVisual = new Mesh();
-  Kdtree::drawKdtree(kdtree, kdtreeVisual);
+  Kdtree::drawKdtree(kdtree, kdtreeVisual, 1e1);
 
   QefSolver sum;
 
@@ -262,7 +263,8 @@ int main() {
   int intersectionPreservingVerticesCount = 0;
   bool intersectionFree = false;
 
-  Mesh *mesh = Octree::generateMesh(octree, &g, intersectionPreservingVerticesCount, intersectionFree);
+  // Mesh *mesh = Octree::generateMesh(octree, &g, intersectionPreservingVerticesCount, intersectionFree);
+  Mesh * mesh = Kdtree::extractMesh(kdtree, &g, 1e-1);
   cout << "intersectionFree: " << (intersectionFree ? "true" : "false") << endl;
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
 //  cout << "vertex count: " << mesh->positions.size() << endl;
@@ -289,9 +291,9 @@ int main() {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       program.use();
       setUniforms(program);
-      drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, true);
+      drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, false);
       // drawMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1], program, false, true);
-      drawMesh(kdtreeVisual, positionsBuffers[2], normalsBuffers[2], indicesBuffers[2], program, false, true);
+      // drawMesh(kdtreeVisual, positionsBuffers[2], normalsBuffers[2], indicesBuffers[2], program, false, true);
       glfwSwapBuffers(window);
       inited = true;
     }

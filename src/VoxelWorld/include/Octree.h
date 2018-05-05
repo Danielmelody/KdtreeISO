@@ -13,6 +13,7 @@
 #include <tuple>
 #include <memory>
 #include "Topology.h"
+#include "Vertex.h"
 #include "Qef.h"
 #include "Utils.h"
 #include "Mesh.h"
@@ -20,23 +21,15 @@
 
 class SummedAreaOctree;
 
-struct Vertex {
-  unsigned int vertexIndex;
-  glm::vec3 hermiteP;
-  glm::vec3 hermiteN;
-public:
-  Vertex() : vertexIndex(0), hermiteP(glm::vec3(0)), hermiteN(glm::vec3(0)) {}
-};
-
 typedef std::unordered_set<std::set<Vertex *>, ContainerHasher<std::set<Vertex *>>> EdgePolygonSet;
 
 class Octree {
 public:
   friend class SatOctree;
   static void setCellSize(float size);
-  static Octree *buildWithTopology(OctCodeType minCode, int depth, Topology *topology, int &loselessCut);
-  static void getSum(Octree *root, OctCodeType minPos, OctCodeType maxPos, QefSolver& out);
-  static Kdtree *generateKdtree(Octree *root, OctCodeType minCode, OctCodeType maxCode, int depth);
+  static Octree *buildWithTopology(PositionCode minCode, int depth, Topology *topology, int &loselessCut);
+  static void getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefSolver& out);
+  static Kdtree *generateKdtree(Octree *root, PositionCode minCode, PositionCode maxCode, int depth);
   static int simplify(Octree *root, float threshold, Topology *geometry);
   static void reverseExtendedSimplify(Octree *root, Topology *g);
   static Octree *extendedSimplify(Octree *root,
@@ -138,9 +131,8 @@ protected:
                            EdgePolygonSet &edgePolygonSet,
                            bool intersectionFree);
   static void generatePolygons(Octree *nodes[4], int dir, Mesh *mesh, Topology *g);
-  static void detectSharpTriangles(Vertex *vertices[3], Mesh *mesh, Topology *g);
   static bool getSelfQef(Octree *node, Topology *geometry, QefSolver &qef);
-  static Octree *samplerBuild(OctCodeType minCode, int depth, Topology *geometry);
+  static Octree *samplerBuild(PositionCode minCode, int depth, Topology *geometry);
   static void calHermite(Octree *node, QefSolver *qef, Topology *g, Vertex *vertex);
   Octree *children[8];
   int childIndex;
@@ -148,8 +140,8 @@ protected:
   bool isLeaf;
   glm::vec3 min;
   glm::vec3 size;
-  OctCodeType minCode;
-  OctCodeType maxCode;
+  PositionCode minCode;
+  PositionCode maxCode;
   int depth;
   QefSolver qef;
   QefSolver intergral;

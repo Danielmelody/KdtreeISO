@@ -9,7 +9,7 @@
 
 using glm::vec3;
 
-typedef glm::ivec3 OctCodeType;
+typedef glm::ivec3 PositionCode;
 
 inline bool segmentFaceIntersection(const vec3 &va, const vec3 &vb, const vec3 &min, const vec3& max, int dir) {
   float l = (vb - va)[dir];
@@ -45,8 +45,9 @@ template <typename C> struct ContainerHasher
   }
 };
 
-inline glm::vec3 codeToPos(OctCodeType code, float cellSize) {
-  return vec3((float)code.x * cellSize, (float)code.y * cellSize, (float)code.z * cellSize);
+inline glm::vec3 codeToPos(PositionCode code, float cellSize) {
+  return vec3((float) code.x * cellSize, (float) code.y * cellSize, (float) code.z * cellSize);
 }
+
 
 #endif //VOXELWORLD_UTILS_H

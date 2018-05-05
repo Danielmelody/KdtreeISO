@@ -5,6 +5,8 @@
 #ifndef VOXELWORLD_INDICATORS_H
 #define VOXELWORLD_INDICATORS_H
 
+#include "Utils.h"
+
 using glm::vec3;
 
 inline const vec3 &min_offset_subdivision(int i) {
@@ -22,16 +24,16 @@ inline const vec3 &min_offset_subdivision(int i) {
   return offsets[i];
 };
 
-inline const OctCodeType &min_offset_subdivision_code(int i) {
-  static const OctCodeType offsets[8] = {
-      OctCodeType(0, 0, 0),
-      OctCodeType(0, 0, 1),
-      OctCodeType(0, 1, 0),
-      OctCodeType(0, 1, 1),
-      OctCodeType(1, 0, 0),
-      OctCodeType(1, 0, 1),
-      OctCodeType(1, 1, 0),
-      OctCodeType(1, 1, 1),
+inline const PositionCode &min_offset_subdivision_code(int i) {
+  static const PositionCode offsets[8] = {
+      PositionCode(0, 0, 0),
+      PositionCode(0, 0, 1),
+      PositionCode(0, 1, 0),
+      PositionCode(0, 1, 1),
+      PositionCode(1, 0, 0),
+      PositionCode(1, 0, 1),
+      PositionCode(1, 1, 0),
+      PositionCode(1, 1, 1),
   };
   assert(i >= 0 && i < 8);
   return offsets[i];

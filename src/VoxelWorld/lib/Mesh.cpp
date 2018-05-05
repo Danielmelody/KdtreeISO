@@ -2,8 +2,8 @@
 // Created by Danielhu on 2018/1/22.
 //
 
-#include <Topology.h>
 #include "Mesh.h"
+#include "Indicators.h"
 
 void Mesh::generateFlatNormals() {
   normals.resize(positions.size());
@@ -25,4 +25,49 @@ void Mesh::generateFlatNormals() {
   positions = flat_positions;
   normals = flat_normals;
   indices = flat_indices;
+}
+
+void Mesh::addVertex(Vertex *v, Topology *g) {
+  g->normal(v->hermiteP, v->hermiteN);
+  v->vertexIndex = static_cast<unsigned int>(positions.size());
+  positions.push_back(v->hermiteP);
+  normals.push_back(v->hermiteN);
+}
+
+void Mesh::addTriangle(Vertex **vertices, Topology *g) {
+  for (int j = 0; j < 3; ++j) {
+    auto targetVert = vertices[j];
+    Vertex *adjacentVerts[2] = {vertices[(j + 1) % 3], vertices[(j + 2) % 3]};
+    glm::vec3 offset =
+        adjacentVerts[1]->hermiteP - targetVert->hermiteP +
+            adjacentVerts[0]->hermiteP - targetVert->hermiteP;
+    offset *= 0.05f;
+    glm::vec3 normal;
+    g->normal(targetVert->hermiteP + offset, normal);
+    if (glm::dot(normal, targetVert->hermiteN) < std::cos(glm::radians(15.f))) {
+      indices.push_back(static_cast<unsigned int>(positions.size()));
+      positions.push_back(targetVert->hermiteP);
+      normals.push_back(normal);
+    } else {
+      indices.push_back(targetVert->vertexIndex);
+    }
+  }
+  
+}
+void Mesh::drawAABBDebug(glm::vec3 min, glm::vec3 max) {
+  auto offset = max - min;
+  for (int i = 0; i < 3; ++i) {
+    for(int j = 0; j < 2; ++j) {
+      vec3 quad[4];
+      for (int k = 0; k < 4; ++k) {
+        quad[k] = min + offset * min_offset_subdivision(cellProcFaceMask[i * 4 + k][j]);
+      }
+      int quadIndices[] = {0, 1, 2, 1, 2, 3};
+      for (auto quadIndex : quadIndices) {
+        positions.push_back(quad[quadIndex]);
+        normals.push_back(glm::normalize(quad[quadIndex] - (min + max) / 2.f));
+        indices.push_back(static_cast<unsigned int &&>(indices.size()));
+      }
+    }
+  }
 }

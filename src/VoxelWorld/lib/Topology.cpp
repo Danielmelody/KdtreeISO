@@ -57,7 +57,7 @@ glm::vec3 Topology::gradient(const glm::vec3 &p) {
   return vec3(nx, ny, nz) / gradient_offset;
 }
 
-float Topology::laplaceOperator(const glm::vec3 p) {
+float Topology::laplaceOperator(const vec3 &p) {
   float lx = gradient(p + vec3(divergence_offset, 0.f, 0.f)).x - gradient(p - vec3(divergence_offset, 0.f, 0.f)).x;
   float ly = gradient(p + vec3(0.f, divergence_offset, 0.f)).y - gradient(p - vec3(0.f, divergence_offset, 0.f)).y;
   float lz = gradient(p + vec3(0.f, 0.f, divergence_offset)).z - gradient(p - vec3(0.f, 0.f, divergence_offset)).z;

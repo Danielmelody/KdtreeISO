@@ -51,19 +51,19 @@ bool Octree::getSelfQef(Octree *node, Topology *g, QefSolver &qef) {
   return true;
 }
 
-Octree *Octree::buildWithTopology(OctCodeType minCode, int depth, Topology *topology, int &losslessCut) {
+Octree *Octree::buildWithTopology(PositionCode minCode, int depth, Topology *topology, int &losslessCut) {
   auto root = samplerBuild(minCode, depth, topology);
   // root = losslessCompress(root, -1, topology, losslessCut);
   return root;
 }
 
-Octree *Octree::samplerBuild(OctCodeType minCode, int depth, Topology *topology) {
+Octree *Octree::samplerBuild(PositionCode minCode, int depth, Topology *topology) {
   vec3 size = vec3(Octree::cellSize * (1 << (depth - 1)));
   vec3 min = codeToPos(minCode, Octree::cellSize);
   auto root = new Octree(min, size, depth);
   assert(depth > 0);
   root->minCode = minCode;
-  OctCodeType sizeCode = OctCodeType(static_cast<uint16_t>(1 << (depth - 1)));
+  PositionCode sizeCode = PositionCode(static_cast<uint16_t>(1 << (depth - 1)));
   root->maxCode = minCode + sizeCode;
   bool homogeneous = true;
   if (depth == 1) {
@@ -74,9 +74,9 @@ Octree *Octree::samplerBuild(OctCodeType minCode, int depth, Topology *topology)
     root->isLeaf = true;
     homogeneous = false;
   } else {
-    OctCodeType subSizeCode = OctCodeType(static_cast<uint16_t >(1 << (depth - 2)));
+    PositionCode subSizeCode = PositionCode(static_cast<uint16_t >(1 << (depth - 2)));
     for (int i = 0; i < 8; ++i) {
-      OctCodeType subMinCode = minCode + subSizeCode * min_offset_subdivision_code(i);
+      PositionCode subMinCode = minCode + subSizeCode * min_offset_subdivision_code(i);
       root->children[i] =
           samplerBuild(subMinCode, depth - 1, topology);
       homogeneous = homogeneous && !root->children[i];
@@ -97,7 +97,7 @@ Octree *Octree::samplerBuild(OctCodeType minCode, int depth, Topology *topology)
   return root;
 }
 
-void Octree::getSum(Octree *root, OctCodeType minPos, OctCodeType maxPos, QefSolver &out) {
+void Octree::getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefSolver &out) {
   if (!root) {
     return;
   }
@@ -118,7 +118,7 @@ void Octree::getSum(Octree *root, OctCodeType minPos, OctCodeType maxPos, QefSol
   }
 }
 
-Kdtree *Octree::generateKdtree(Octree *root, OctCodeType minCode, OctCodeType maxCode, int depth) {
+Kdtree *Octree::generateKdtree(Octree *root, PositionCode minCode, PositionCode maxCode, int depth) {
   if (glm::any(glm::greaterThanEqual(minCode, maxCode))) {
     return nullptr;
   }
@@ -127,40 +127,37 @@ Kdtree *Octree::generateKdtree(Octree *root, OctCodeType minCode, OctCodeType ma
   if (sum.pointCount == 0) {
     return nullptr;
   }
-  OctCodeType bestLeftMinCode, bestRightMinCode, bestLeftMaxCode, bestRightMaxCode;
+  PositionCode bestRightMinCode = maxCode, bestLeftMaxCode = minCode;
   float minErrorDiff = 1e20;
   QefSolver leftSum, rightSum;
+  int bestDir = -1;
   for (int dir = 0; dir < 3; ++dir) {
     for (int axis = minCode[dir] + 1; axis < maxCode[dir]; ++axis) {
-      OctCodeType leftMinCode = minCode;
-
-      OctCodeType rightMinCode = minCode;
+      PositionCode rightMinCode = minCode;
       rightMinCode[dir] = axis;
 
-      OctCodeType leftMaxCode = maxCode;
+      PositionCode leftMaxCode = maxCode;
 
       leftMaxCode[dir] = axis;
-      OctCodeType rightMaxCode = maxCode;
       glm::vec3 leftApproximate, rightApproximate;
       leftSum.reset();
       rightSum.reset();
       float leftError, rightError;
-      getSum(root, leftMinCode, leftMaxCode, leftSum);
-      getSum(root, rightMinCode, rightMaxCode, rightSum);
+      getSum(root, minCode, leftMaxCode, leftSum);
+      getSum(root, rightMinCode, maxCode, rightSum);
       leftSum.solve(leftApproximate, leftError);
       rightSum.solve(rightApproximate, rightError);
       if (abs(rightError - leftError) < minErrorDiff) {
         minErrorDiff = abs(rightError - leftError);
-        bestLeftMinCode = leftMinCode;
+        bestDir = dir;
         bestLeftMaxCode = leftMaxCode;
         bestRightMinCode = rightMinCode;
-        bestRightMaxCode = rightMaxCode;
       }
     }
   }
-  auto kd = new Kdtree(sum, bestLeftMinCode, bestRightMaxCode, depth);
-  kd->left = generateKdtree(root, bestLeftMinCode, bestLeftMaxCode, depth + 1);
-  kd->right = generateKdtree(root, bestRightMinCode, bestRightMaxCode, depth + 1);
+  auto kd = new Kdtree(sum, minCode, maxCode, bestDir, depth);
+  kd->children[0] = generateKdtree(root, minCode, bestLeftMaxCode, depth + 1);
+  kd->children[1] = generateKdtree(root, bestRightMinCode, maxCode, depth + 1);
   return kd;
 }
 
@@ -729,14 +726,6 @@ bool Octree::findFeatureNodes(Octree *node,
    */
 }
 
-void calVertex(Vertex *v, vec3 p, Mesh *mesh, Topology *g) {
-  v->hermiteP = p;
-  g->normal(p, v->hermiteN);
-  v->vertexIndex = static_cast<unsigned int>(mesh->positions.size());
-  mesh->positions.push_back(v->hermiteP);
-  mesh->normals.push_back(v->hermiteN);
-}
-
 bool Octree::isInterFreeCondition2Faild(const std::vector<Vertex *> &polygons, const vec3 &p1, const vec3 &p2) {
   int anotherV = 3;
   bool interSupportingEdge = false;
@@ -838,8 +827,8 @@ void Octree::generateQuad(Octree **nodes,
         }
         if (pointCount > 0) {
           firstConcaveFaceVertex = i;
-          auto faceV = new Vertex();
-          calVertex(faceV, massPointSum / (float) pointCount, mesh, g);
+          auto faceV = new Vertex(massPointSum / (float) pointCount);
+          mesh->addVertex(faceV, g);
           a->faceVertices[b] = faceV;
           b->faceVertices[a] = faceV;
           condition1Failed = true;
@@ -924,11 +913,11 @@ void Octree::generateQuad(Octree **nodes,
         Vertex *triangle[3] = {
             polygon[0], polygon[i + 1], polygon[i + 2]
         };
-        detectSharpTriangles(triangle, mesh, g);
+        mesh->addTriangle(triangle, g);
       }
     } else {
       g->solve(p1, p2, edgeVertex.hermiteP);
-      calVertex(&edgeVertex, edgeVertex.hermiteP, mesh, g);
+      mesh->addVertex(&edgeVertex, g);
       for (int i = 0; i < 4; ++i) {
         Octree *a = nodes[i];
         Octree *b = nodes[(i + 1) % 4];
@@ -946,21 +935,15 @@ void Octree::generateQuad(Octree **nodes,
         Vertex *triangle[3] = {
             &edgeVertex, polygon[i * 2], polygon[i * 2 + 1]
         };
-        detectSharpTriangles(triangle, mesh, g);
+        mesh->addTriangle(triangle, g);
       }
-//      Vertex* p1v = new Vertex();
-//      Vertex* p2v = new Vertex();
-//      calVertex(p1v, p1, mesh, g);
-//      calVertex(p2v, p2, mesh, g);
-//      Vertex* edge[] = {p1v, p1v, p2v};
-//      detectSharpTriangles(edge, mesh, g);
     }
   } else {
     for (int i = 2; i < polygon.size(); ++i) {
       Vertex *triangle[3] = {
           polygon[0], polygon[i - 1], polygon[i]
       };
-      detectSharpTriangles(triangle, mesh, g);
+      mesh->addTriangle(triangle, g);
     }
   }
 }
@@ -1006,26 +989,6 @@ void Octree::generatePolygons(Octree *nodes[4], int dir, Mesh *mesh, Topology *g
       mesh->indices.push_back(polygons[0]->vertex.vertexIndex);
       mesh->indices.push_back(polygons[i - 1]->vertex.vertexIndex);
       mesh->indices.push_back(polygons[i]->vertex.vertexIndex);
-    }
-  }
-}
-
-void Octree::detectSharpTriangles(Vertex *vertices[3], Mesh *mesh, Topology *g) {
-  for (int j = 0; j < 3; ++j) {
-    auto targetVert = vertices[j];
-    Vertex *adjacentVerts[2] = {vertices[(j + 1) % 3], vertices[(j + 2) % 3]};
-    glm::vec3 offset =
-        adjacentVerts[1]->hermiteP - targetVert->hermiteP +
-            adjacentVerts[0]->hermiteP - targetVert->hermiteP;
-    offset *= 0.05f;
-    glm::vec3 normal;
-    g->normal(targetVert->hermiteP + offset, normal);
-    if (glm::dot(normal, targetVert->hermiteN) < std::cos(glm::radians(15.f))) {
-      mesh->indices.push_back(static_cast<unsigned int>(mesh->positions.size()));
-      mesh->positions.push_back(targetVert->hermiteP);
-      mesh->normals.push_back(normal);
-    } else {
-      mesh->indices.push_back(targetVert->vertexIndex);
     }
   }
 }
