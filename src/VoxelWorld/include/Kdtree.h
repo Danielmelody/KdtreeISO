@@ -68,11 +68,11 @@ struct Kdtree {
                           float threshold);
 
   static void contourEdge(EdgeKd &nodes,
-                          const AALine &line,
-                          Mesh *mesh,
-                          Topology *t,
-                          float threshold);
-  static void detectQuad(EdgeKd &nodes, AALine line, float threshold);
+                           const AALine &line,
+                           int quadDir1,
+                           Topology *t,
+                           float threshold,
+                           Mesh *mesh);
   static void generateQuad(EdgeKd &nodes, Mesh *mesh, Topology *t);
 };
 

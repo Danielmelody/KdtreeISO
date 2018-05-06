@@ -219,7 +219,7 @@ int main() {
 //          )
 //      )
 //      new Difference(
-//          new AABB(vec3(-4.3f), vec3(4.3f))
+          new AABB(vec3(-3.f), vec3(3.f))
 //          new Sphere(3, vec3(0, 5, 0))
 //      )
 //      new Heart(5)
@@ -228,34 +228,22 @@ int main() {
 //          new AABB(vec3(-4, -4, -0.2), vec3(4, 4, 0.2)),
 //          new AABB(vec3(-1.5f), vec3(1.5f))
 //      )
-      new Sphere(4.3f)
+//      new Sphere(4.3f)
   );
   int svoCull = 0;
 
-  int depth = 6;
-  Octree::setCellSize(0.5f);
-  PositionCode sizeCode = PositionCode(1 << (depth - 1));
+  int octDepth = 4;
+  Octree::setCellSize(2.f);
+  PositionCode sizeCode = PositionCode(1 << (octDepth - 1));
 
-  auto octree = Octree::buildWithTopology(-sizeCode / 2, depth, &g, svoCull);
+  auto octree = Octree::buildWithTopology(-sizeCode / 2, octDepth, &g, svoCull);
   // auto satOct = SatOctree::initialBuildFromOctree(octree, encodePosition(PositionCode(0)), 7);
   auto kdtree = Octree::generateKdtree(octree, -sizeCode / 2, sizeCode / 2, 0);
 
   auto *kdtreeVisual = new Mesh();
-  Kdtree::drawKdtree(kdtree, kdtreeVisual, 1e1);
+  Kdtree::drawKdtree(kdtree, kdtreeVisual, -1);
 
   QefSolver sum;
-
-  cout.setf(ios::scientific);
-//  int originReduction = 0;
-//  for (int i = 0; i < 1; ++i) {
-//    float threshold = std::pow(10.f, (float) i - 1.f);
-//    cout << "Threshold : " << threshold << endl;
-//    originReduction += Octree::simplify(octree, threshold, &g);
-//    cout << "origin reduction : " << originReduction << endl;
-//    int extendedReduction = 0;
-//    Octree::extendedSimplify(octree, threshold, &g, extendedReduction);
-//    cout << "extended reduction : " << extendedReduction << endl;
-//  }
 
   auto *octreeVisual = new Mesh();
   unordered_set<Vertex *> visualUtil;
@@ -264,7 +252,7 @@ int main() {
   bool intersectionFree = false;
 
   // Mesh *mesh = Octree::generateMesh(octree, &g, intersectionPreservingVerticesCount, intersectionFree);
-  Mesh * mesh = Kdtree::extractMesh(kdtree, &g, 1e-1);
+  Mesh * mesh = Kdtree::extractMesh(kdtree, &g, -1);
   cout << "intersectionFree: " << (intersectionFree ? "true" : "false") << endl;
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
 //  cout << "vertex count: " << mesh->positions.size() << endl;
@@ -291,9 +279,9 @@ int main() {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       program.use();
       setUniforms(program);
-      drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, false);
+      drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, true);
       // drawMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1], program, false, true);
-      // drawMesh(kdtreeVisual, positionsBuffers[2], normalsBuffers[2], indicesBuffers[2], program, false, true);
+      drawMesh(kdtreeVisual, positionsBuffers[2], normalsBuffers[2], indicesBuffers[2], program, false, true);
       glfwSwapBuffers(window);
       inited = true;
     }

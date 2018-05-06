@@ -81,9 +81,11 @@ void Kdtree::contourCell(Kdtree *node, Mesh *mesh, Topology *t, float threshold)
   contourCell(node->children[1], mesh, t, threshold);
 }
 
-bool checkMinialFace(const Kdtree::FaceKd &nodes, int dir) {
-  auto minialFace = min(nodes[0]->maxCode, nodes[1]->maxCode) - max(nodes[0]->minCode, nodes[1]->minCode);
-  return minialFace[(dir + 1) % 3] > 0 && minialFace[(dir + 2) % 3] > 0;
+bool checkMinialFace(const Kdtree::FaceKd &nodes, int dir, PositionCode &faceMin, PositionCode &faceMax) {
+  faceMax = min(nodes[0]->maxCode, nodes[1]->maxCode);
+  faceMin = max(nodes[0]->minCode, nodes[1]->minCode);
+  auto offset = faceMax - faceMin;
+  return offset[(dir + 1) % 3] > 0 && offset[(dir + 2) % 3] > 0;
 }
 
 void Kdtree::contourFace(FaceKd &nodes,
@@ -98,7 +100,9 @@ void Kdtree::contourFace(FaceKd &nodes,
   if (nodes[0]->isLeaf(threshold) && nodes[1]->isLeaf(threshold)) {
     return;
   }
-  if (!checkMinialFace(nodes, dir)) {
+
+  PositionCode faceMin, faceMax;
+  if (!checkMinialFace(nodes, dir, faceMin, faceMax)) {
     return;
   }
   for (int i = 0; i < 2; ++i) {
@@ -109,41 +113,25 @@ void Kdtree::contourFace(FaceKd &nodes,
       }
     }
   }
-  AALine line1 = constructLine(nodes, 0, dir, axis, threshold);
-  AALine line2 = constructLine(nodes, 1, dir, axis, threshold);
-  if (!nodes[0]->isLeaf(threshold)) {
-    EdgeKd edgeNodes = {nodes[0]->children[0], nodes[0]->children[1], nodes[1], nodes[1]};
-    contourEdge(edgeNodes, line1, mesh, t, threshold);
-    FaceKd face1 = {nodes[0]->children[0], nodes[1]};
-    FaceKd face2 = {nodes[0]->children[1], nodes[1]};
-    contourFace(face1, dir, axis, mesh, t, threshold);
-    contourFace(face2, dir, axis, mesh, t, threshold);
-  } else if (!nodes[1]->isLeaf(threshold)) {
-    EdgeKd edgeNodes2 = {nodes[0], nodes[0], nodes[1]->children[0], nodes[1]->children[1]};
-    contourEdge(edgeNodes2, line2, mesh, t, threshold);
-    FaceKd face1 = {nodes[0], nodes[1]->children[0]};
-    FaceKd face2 = {nodes[0], nodes[1]->children[1]};
-    contourFace(face1, dir, axis, mesh, t, threshold);
-    contourFace(face2, dir, axis, mesh, t, threshold);
-  }
-}
 
-void Kdtree::detectQuad(EdgeKd &nodes, AALine line, float threshold) {
-  if (!nodes[0]->isLeaf(threshold)
-      && nodes[0] == nodes[1]
-      && nodes[0]->axis() == line.point[nodes[0]->planeDir]
-      && nodes[0]->planeDir != line.dir) {
-    auto commonNode = nodes[0];
-    nodes[0] = commonNode->children[0];
-    nodes[1] = commonNode->children[1];
-  }
-  if (!nodes[2]->isLeaf(threshold)
-      && nodes[2] == nodes[3]
-      && nodes[2]->axis() == line.point[nodes[2]->planeDir]
-      && nodes[2]->planeDir != line.dir) {
-    auto commonNode = nodes[2];
-    nodes[2] = commonNode->children[0];
-    nodes[3] = commonNode->children[1];
+  for (int i = 0; i < 2; ++i) {
+    if (!nodes[i]->isLeaf(threshold)) {
+      for (int j = 0; j < 2; ++j) {
+        FaceKd nextFace = nodes;
+        nextFace[i] = nodes[i]->children[j];
+        contourFace(nextFace, dir, axis, mesh, t, threshold);
+      }
+      if (nodes[i]->axis() > faceMin[nodes[i]->planeDir] && nodes[i]->axis() < faceMax[nodes[i]->planeDir]) {
+        EdgeKd edgeNodes = {nodes[0], nodes[0], nodes[1], nodes[1]};
+        for (int j = 0; j < 2; ++j) {
+          edgeNodes[i * 2] = nodes[i]->children[0];
+          edgeNodes[i * 2 + 1] = nodes[i]->children[1];
+        }
+        AALine line = constructLine(nodes, i, dir, axis, threshold);
+        contourEdge(edgeNodes, line, nodes[i]->planeDir, t, threshold, mesh);
+      }
+      return;
+    }
   }
 }
 
@@ -155,36 +143,53 @@ void setEdgeNode(Kdtree::EdgeKd &nodes, int i, Kdtree *p) {
   }
 }
 
-bool checkMinialEdge(const Kdtree::EdgeKd &nodes, int dir) {
-  PositionCode minCode =
-      max(max(nodes[0]->minCode, nodes[1]->minCode), max(nodes[2]->minCode, nodes[3]->minCode));
-  PositionCode maxCode =
-      min(min(nodes[0]->maxCode, nodes[1]->maxCode), min(nodes[2]->maxCode, nodes[3]->maxCode));
-  return minCode[dir] < maxCode[dir];
+bool checkMinialEdge(const Kdtree::EdgeKd &nodes, const AALine& line, PositionCode minEnd, PositionCode maxEnd) {
+  minEnd = maxEnd = line.point;
+  int dir = line.dir;
+  minEnd[dir] = max(max(nodes[0]->minCode, nodes[1]->minCode), max(nodes[2]->minCode, nodes[3]->minCode))[dir];
+  maxEnd[dir] = min(min(nodes[0]->maxCode, nodes[1]->maxCode), min(nodes[2]->maxCode, nodes[3]->maxCode))[dir];
+  return minEnd[dir] < maxEnd[dir];
 }
 
-void Kdtree::contourEdge(EdgeKd &nodes, const AALine &line, Mesh *mesh, Topology *t, float threshold) {
+int nextQuadIndex(int dir1, int dir2, int planeDir, int i) {
+  PositionCode pos;
+  pos[dir1] = i % 2;
+  pos[dir2] = i / 2;
+  return pos[planeDir];
+}
+
+void Kdtree::contourEdge(EdgeKd &nodes,
+                         const AALine &line,
+                         int quadDir1,
+                         Topology *t,
+                         float threshold,
+                         Mesh *mesh) {
   if (!nodes[0] || !nodes[1] || !nodes[2] || !nodes[3]) {
     return;
   }
-
+  if (line.dir != 0) {
+    return;
+  }
+  assert(quadDir1 >= 0 && quadDir1 < 3);
+  int quadDir2 = 3 - quadDir1 - line.dir;
   for (int i = 0; i < 4; ++i) {
     while (!nodes[i]->isLeaf(threshold) && nodes[i]->planeDir != line.dir) {
-      auto relations = glm::greaterThan(nodes[i]->maxCode, line.point);
-      if (relations[nodes[i]->planeDir]) {
-        nodes[i] = nodes[i]->children[0];
-      } else {
-        nodes[i] = nodes[i]->children[1];
-      }
+      nodes[i] = nodes[i]->children[nextQuadIndex(quadDir1, quadDir2, nodes[i]->planeDir, i)];
       if (!nodes[i]) {
         return;
       }
     }
   }
-  if (!checkMinialEdge(nodes, line.dir)) {
+  PositionCode minEnd, maxEnd;
+  if (!checkMinialEdge(nodes, line, minEnd, maxEnd)) {
     return;
   }
-  detectQuad(nodes, line, threshold);
+
+  // only for debug
+  if (signbit(t->value(minEnd) == signbit(t->value(maxEnd)))) {
+    return;
+  }
+
   if (nodes[0]->isLeaf(threshold) && nodes[1]->isLeaf(threshold) && nodes[2]->isLeaf(threshold)
       && nodes[3]->isLeaf(threshold)) {
     generateQuad(nodes, mesh, t);
@@ -194,20 +199,20 @@ void Kdtree::contourEdge(EdgeKd &nodes, const AALine &line, Mesh *mesh, Topology
     EdgeKd nextNodes = nodes;
     if (!nodes[i]->isLeaf() && nodes[i]->planeDir == line.dir) {
       setEdgeNode(nextNodes, i, nodes[i]->children[0]);
-      contourEdge(nextNodes, line, mesh, t, threshold);
+      contourEdge(nextNodes, line, quadDir1, t, threshold, mesh);
       nextNodes = nodes;
       setEdgeNode(nextNodes, i, nodes[i]->children[1]);
-      contourEdge(nextNodes, line, mesh, t, threshold);
+      contourEdge(nextNodes, line, quadDir1, t, threshold, mesh);
       return;
     }
   }
 }
 
 void Kdtree::generateQuad(EdgeKd &nodes, Mesh *mesh, Topology *t) {
-//  for (auto n : nodes) {
-//    // n->vertices[0].hermiteP = codeToPos(n->minCode + n->maxCode, Octree::cellSize) / 2.f;
-//    mesh->drawAABBDebug(codeToPos(n->minCode, Octree::cellSize), codeToPos(n->maxCode, Octree::cellSize));
-//  }
+  for (auto n : nodes) {
+    n->vertices[0].hermiteP = codeToPos(n->minCode + n->maxCode, Octree::cellSize) / 2.f;
+    // mesh->drawAABBDebug(codeToPos(n->minCode, Octree::cellSize), codeToPos(n->maxCode, Octree::cellSize));
+  }
 
 //  return;
 
