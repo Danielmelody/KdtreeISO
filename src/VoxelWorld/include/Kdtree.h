@@ -13,9 +13,14 @@
 #include "AxisAlignedLine.h"
 
 struct Kdtree {
+#ifdef _DEBUG
+  template class std::array<Kdtree*, 2>
+  template class std::array<Kdtree*, 4>
+#endif
+
   typedef std::array<Kdtree *, 2> FaceKd;
   typedef std::array<Kdtree *, 4> EdgeKd;
-  QefSolver sum;
+  const QefSolver qef;
   PositionCode minCode;
   PositionCode maxCode;
   int planeDir;
@@ -29,7 +34,7 @@ struct Kdtree {
          int dir,
          int depth)
       :
-      sum(sum),
+      qef(sum),
       minCode(minCode),
       maxCode(maxCode),
       planeDir(dir),
@@ -37,10 +42,9 @@ struct Kdtree {
     vertices.resize(1);
     sum.solve(vertices[0].hermiteP, error);
   }
-  inline bool isLeaf() { return !children[0] && !children[1]; }
   inline bool isLeaf(float threshold) { return error < threshold || (!children[0] && !children[1]); }
   inline int axis() {
-    assert(!isLeaf());
+    assert(!isLeaf(-1));
     if (children[0]) {
       return children[0]->maxCode[planeDir];
     }
@@ -66,7 +70,7 @@ struct Kdtree {
                           Mesh *mesh,
                           Topology *t,
                           float threshold);
-
+  static void detectQuad(EdgeKd &nodes, AALine line, float threshold);
   static void contourEdge(EdgeKd &nodes,
                            const AALine &line,
                            int quadDir1,
@@ -75,5 +79,6 @@ struct Kdtree {
                            Mesh *mesh);
   static void generateQuad(EdgeKd &nodes, Mesh *mesh, Topology *t);
 };
+
 
 #endif //VOXELWORLD_KDTREE_H
