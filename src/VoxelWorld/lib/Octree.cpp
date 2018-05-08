@@ -440,10 +440,10 @@ void Octree::edgeCollapse(Octree *&a,
   }
 }
 
-Mesh *Octree::generateMesh(Octree *root,
-                           Topology *geometry,
-                           int &intersectionPreservingVerticesCount,
-                           bool intersectionFree) {
+Mesh *Octree::extractMesh(Octree *root,
+                          Topology *geometry,
+                          int &intersectionPreservingVerticesCount,
+                          bool intersectionFree) {
   assert(root);
   auto *mesh = new Mesh();
   std::unordered_set<Vertex *> indexed;

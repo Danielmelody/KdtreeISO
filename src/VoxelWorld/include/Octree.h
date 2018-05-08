@@ -19,13 +19,11 @@
 #include "Mesh.h"
 #include "Kdtree.h"
 
-class SummedAreaOctree;
 
 typedef std::unordered_set<std::set<Vertex *>, ContainerHasher<std::set<Vertex *>>> EdgePolygonSet;
 
 class Octree {
 public:
-  friend class SatOctree;
   static void setCellSize(float size);
   static Octree *buildWithTopology(PositionCode minCode, int depth, Topology *topology, int &loselessCut);
   static void getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefSolver& out);
@@ -57,10 +55,10 @@ public:
                            float faceSize);
   static void cubeExtensionTest(Octree *a, Octree *b, int dir, float minSize);
 
-  static Mesh *generateMesh(Octree *root,
-                            Topology *geometry,
-                            int &intersectionPreservingVerticesCount,
-                            bool intersectionFree = true);
+  static Mesh *extractMesh(Octree *root,
+                           Topology *geometry,
+                           int &intersectionPreservingVerticesCount,
+                           bool intersectionFree = true);
   static void drawOctrees(Octree *root, Mesh *mesh, std::unordered_set<Vertex *> &visited);
   float getError() { return error; }
   Octree(glm::vec3 min, glm::vec3 size, int depth) :

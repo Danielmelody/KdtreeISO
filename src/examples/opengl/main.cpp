@@ -50,25 +50,38 @@ const char *frag =
     "    // color = (1.0 - albedo) * (step(dot(normal,vec3(0, 0, -1)), 0.0) * 0.8 + 0.2);\n"
     "}";
 
-float cameraOffset = 20.f;
-double previousCursorX = 0.f;
-double previousCursorY = 0.f;
-float rotateX = 0.f;
-float rotateY = 0.f;
-bool pressing = false;
-bool inited = false;
+static float cameraOffset = 20.f;
+static double previousCursorX = 0.f;
+static double previousCursorY = 0.f;
+static float rotateX = 0.f;
+static float rotateY = 0.f;
+static bool pressing = false;
+static bool inited = false;
 
-void addMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint &indicesBuffer) {
-  glGenBuffers(1, &positionsBuffer);
-  glBindBuffer(GL_ARRAY_BUFFER, positionsBuffer);
+struct MeshBuffer {
+  GLuint positions;
+  GLuint normals;
+  GLuint indices;
+  MeshBuffer() {
+    glGenBuffers(1, &positions);
+    glGenBuffers(1, &normals);
+    glGenBuffers(1, &indices);
+  }
+  ~MeshBuffer() {
+    glDeleteBuffers(1, &positions);
+    glDeleteBuffers(1, &normals);
+    glDeleteBuffers(1, &indices);
+  }
+};
+
+void addMesh(Mesh *mesh, const MeshBuffer &buffer) {
+  glBindBuffer(GL_ARRAY_BUFFER, buffer.positions);
   glBufferData(GL_ARRAY_BUFFER, mesh->positions.size() * sizeof(glm::vec3), &(mesh->positions[0]), GL_STATIC_DRAW);
 
-  glGenBuffers(1, &normalsBuffer);
-  glBindBuffer(GL_ARRAY_BUFFER, normalsBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, buffer.normals);
   glBufferData(GL_ARRAY_BUFFER, mesh->normals.size() * sizeof(glm::vec3), &(mesh->normals[0]), GL_STATIC_DRAW);
 
-  glGenBuffers(1, &indicesBuffer);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesBuffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.indices);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                mesh->indices.size() * sizeof(unsigned int),
                &(mesh->indices[0]),
@@ -76,21 +89,19 @@ void addMesh(Mesh *mesh, GLuint &positionsBuffer, GLuint &normalsBuffer, GLuint 
 }
 
 void drawMesh(Mesh *mesh,
-              GLuint &positionsBuffer,
-              GLuint &normalsBuffer,
-              GLuint &indicesBuffer,
+              const MeshBuffer &buffer,
               Program &p,
               bool shaded,
               bool wireframe) {
   glEnableVertexAttribArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER, positionsBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, buffer.positions);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
   glEnableVertexAttribArray(1);
-  glBindBuffer(GL_ARRAY_BUFFER, normalsBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, buffer.normals);
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 0, nullptr);
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesBuffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.indices);
 
   if (wireframe) {
     p.setVec3("albedo", glm::vec3(1, 1, 1));
@@ -186,22 +197,18 @@ int main() {
   glGenVertexArrays(1, &VertexArrayID);
   glBindVertexArray(VertexArrayID);
 
-  GLfloat lineWidthRange[2] = {0.0f, 0.0f};
-  glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
+  MeshBuffer meshBuffers[4];
 
-  GLuint positionsBuffers[3];
-  GLuint normalsBuffers[3];
-  GLuint indicesBuffers[3];
   Transform g(
       glm::rotate(
           glm::translate(mat4(1.f), vec3(0, 0, 0)),
           glm::radians(0.f),
           vec3(1, 0, 0)
       ),
-//      new Difference(
-          // new AABB(vec3(-4.9, -4.9, -1.5), vec3(4.9, 4.9, -0.5))
-          // new Sphere(5)
-//      )
+      new Intersection(
+          new AABB(vec3(-4.3, -4.3, -3.2), vec3(4.3, 4.3, -2.8)),
+          new Sphere(4, vec3(0, 0, -3))
+      )
 //  new Difference(
 //      new Union(
 //          new AABB(vec3(-1.5f, -2, -1.5f), vec3(1.5f, 2, 1.5f)),
@@ -219,7 +226,7 @@ int main() {
 //          )
 //      )
 //      new Difference(
-//          new AABB(vec3(-4.3f), vec3(4.3f))
+//          new AABB(vec3(-4.3f), vec3(4.3f)),
 //          new Sphere(3, vec3(0, 5, 0))
 //      )
 //      new Heart(5)
@@ -228,32 +235,30 @@ int main() {
 //          new AABB(vec3(-4, -4, -0.2), vec3(4, 4, 0.2)),
 //          new AABB(vec3(-1.5f), vec3(1.5f))
 //      )
-      new Sphere(4.3f)
+//      new Sphere(4.3f)
   );
   int svoCull = 0;
   int octDepth = 5;
   Octree::setCellSize(0.6f);
   PositionCode sizeCode = PositionCode(1 << (octDepth - 1));
-
-  float threshold = 1e-1;
+  float threshold = 1e-2;
 
   auto octree = Octree::buildWithTopology(-sizeCode / 2, octDepth, &g, svoCull);
-  // auto satOct = SatOctree::initialBuildFromOctree(octree, encodePosition(PositionCode(0)), 7);
-  auto kdtree = Octree::generateKdtree(octree, -sizeCode / 2, sizeCode / 2, 0);
-
-  auto *kdtreeVisual = new Mesh();
-  Kdtree::drawKdtree(kdtree, kdtreeVisual, threshold);
-
-  QefSolver sum;
-
   auto *octreeVisual = new Mesh();
   unordered_set<Vertex *> visualUtil;
   Octree::drawOctrees(octree, octreeVisual, visualUtil);
+
+  auto kdtree = Octree::generateKdtree(octree, -sizeCode / 2, sizeCode / 2, 0);
+  auto *kdtreeVisual = new Mesh();
+  Kdtree::drawKdtree(kdtree, kdtreeVisual, threshold);
+
   int intersectionPreservingVerticesCount = 0;
   bool intersectionFree = false;
 
-  // Mesh *mesh = Octree::generateMesh(octree, &g, intersectionPreservingVerticesCount, intersectionFree);
-  Mesh * mesh = Kdtree::extractMesh(kdtree, &g, threshold);
+//  Octree::simplify(octree, threshold, &g);
+//  Mesh * mesh = Octree::extractMesh(octree, &g, intersectionPreservingVerticesCount, intersectionFree);
+  Mesh *mesh = Kdtree::extractMesh(kdtree, &g, threshold);
+
   cout << "intersectionFree: " << (intersectionFree ? "true" : "false") << endl;
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
 //  cout << "vertex count: " << mesh->positions.size() << endl;
@@ -266,9 +271,9 @@ int main() {
     return -1;
   }
 
-  addMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0]);
-  addMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1]);
-  addMesh(kdtreeVisual, positionsBuffers[2], normalsBuffers[2], indicesBuffers[2]);
+  addMesh(mesh, meshBuffers[0]);
+  addMesh(octreeVisual, meshBuffers[1]);
+  addMesh(kdtreeVisual, meshBuffers[2]);
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
@@ -280,9 +285,9 @@ int main() {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       program.use();
       setUniforms(program);
-      drawMesh(mesh, positionsBuffers[0], normalsBuffers[0], indicesBuffers[0], program, true, true);
-      // drawMesh(octreeVisual, positionsBuffers[1], normalsBuffers[1], indicesBuffers[1], program, false, true);
-      // drawMesh(kdtreeVisual, positionsBuffers[2], normalsBuffers[2], indicesBuffers[2], program, false, true);
+      drawMesh(mesh, meshBuffers[0], program, true, true);
+      // drawMesh(octreeVisual, meshBuffers[1], program, false, true);
+      // drawMesh(kdtreeVisual, meshBuffers[2], program, false, true);
       glfwSwapBuffers(window);
       inited = true;
     }
@@ -290,16 +295,6 @@ int main() {
 
   delete mesh;
   delete octreeVisual;
-
-  glDeleteBuffers(1, &positionsBuffers[0]);
-  glDeleteBuffers(1, &normalsBuffers[0]);
-  glDeleteBuffers(1, &indicesBuffers[0]);
-  glDeleteBuffers(1, &positionsBuffers[1]);
-  glDeleteBuffers(1, &normalsBuffers[1]);
-  glDeleteBuffers(1, &indicesBuffers[1]);
-  glDeleteBuffers(1, &positionsBuffers[2]);
-  glDeleteBuffers(1, &normalsBuffers[2]);
-  glDeleteBuffers(1, &indicesBuffers[2]);
   glfwTerminate();
   return 0;
 }
