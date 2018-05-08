@@ -27,6 +27,8 @@ struct Kdtree {
   int depth;
   std::vector<Vertex> vertices;
   float error{0.f};
+  uint8_t cornerSigns[8]{};
+  bool clusterability {true};
   Kdtree *children[2]{nullptr, nullptr};
   Kdtree(QefSolver sum,
          PositionCode minCode,
@@ -42,7 +44,7 @@ struct Kdtree {
     vertices.resize(1);
     sum.solve(vertices[0].hermiteP, error);
   }
-  inline bool isLeaf(float threshold) { return error < threshold || (!children[0] && !children[1]); }
+  inline bool isLeaf(float threshold) { return clusterability && (error < threshold || (!children[0] && !children[1])); }
   inline int axis() {
     assert(!isLeaf(-1));
     if (children[0]) {
@@ -60,6 +62,8 @@ struct Kdtree {
     delete children[0];
     delete children[1];
   }
+  void assignSign(Topology *t);
+  void calClusterability();
   static void drawKdtree(Kdtree *root, Mesh *mesh, float threshold);
   static Mesh *extractMesh(Kdtree *root, Topology *t, float threshold);
   static void generateVertexIndices(Kdtree *root, Mesh *mesh, Topology *t, float threshold);

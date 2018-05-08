@@ -15,11 +15,47 @@
 using glm::max;
 using glm::min;
 
+void Kdtree::assignSign(Topology *t) {
+  auto min = codeToPos(minCode, Octree::cellSize);
+  auto size = codeToPos(maxCode - minCode, Octree::cellSize);
+  int8_t mtlID = t->getMaterialID();
+  for (int i = 0; i < 8; ++i) {
+    float val = t->value(min + size * min_offset_subdivision(i));
+    cornerSigns[i] = (uint8_t) (val > 0. ? mtlID : 0);
+  }
+}
+
+void Kdtree::calClusterability() {
+  if (!children[0] || !children[1]) {
+    clusterability = true;
+    return;
+  }
+  // assume cal clusterability from bottom-up
+  if (!children[0]->clusterability || !children[1]->clusterability) {
+    clusterability = false;
+    return;
+  }
+  for (int i = 0; i < 4; ++i) {
+    int edgeMinIndex = cellProcFaceMask[planeDir * 4 + i][0];
+    int edgeMaxIndex = cellProcFaceMask[planeDir * 4 + i][1];
+    int signChanges = 0;
+    for (int j = 0; j < 2; ++j) {
+      if (children[j]->cornerSigns[edgeMinIndex] != children[j]->cornerSigns[edgeMaxIndex]) {
+        signChanges++;
+      }
+    }
+    if (signChanges > 1) {
+      clusterability = false;
+      return;
+    }
+  }
+}
+
 void Kdtree::drawKdtree(Kdtree *root, Mesh *mesh, float threshold) {
   if (!root) {
     return;
   }
-  if (root->isLeaf(threshold)) {
+  if (!root->clusterability) {
     vec3 size = codeToPos(root->maxCode - root->minCode, Octree::cellSize);
     vec3 min = codeToPos(root->minCode, Octree::cellSize);
     for (int i = 0; i < 12; ++i) {
@@ -39,7 +75,7 @@ void Kdtree::drawKdtree(Kdtree *root, Mesh *mesh, float threshold) {
       mesh->indices.push_back(static_cast<unsigned int &&>(mesh->indices.size()));
       mesh->indices.push_back(static_cast<unsigned int &&>(mesh->indices.size()));
     }
-    return;
+//    return;
   }
   drawKdtree(root->children[0], mesh, 0);
   drawKdtree(root->children[1], mesh, 0);
@@ -152,7 +188,9 @@ int nextQuadIndex(int dir1, int dir2, int planeDir, int i) {
 
 void Kdtree::detectQuad(EdgeKd &nodes, AALine line, float threshold) {
   for (int i = 0; i < 2; ++i) {
-    while (!nodes[i * 2]->isLeaf(threshold)
+    while (
+        nodes[i * 2] && nodes[i * 2 + 1]
+        && !nodes[i * 2]->isLeaf(threshold)
         && nodes[2 * i] == nodes[2 * i + 1]
         && nodes[i * 2]->planeDir != line.dir) {
       auto commonNode = nodes[i * 2];
@@ -187,8 +225,11 @@ void Kdtree::contourEdge(EdgeKd &nodes,
                          Topology *t,
                          float threshold,
                          Mesh *mesh) {
-  if (!nodes[0] || !nodes[1] || !nodes[2] || !nodes[3]) {
-    return;
+  detectQuad(nodes, line, threshold);
+  for (auto n : nodes) {
+    if (!n) {
+      return;
+    }
   }
   assert(quadDir1 >= 0 && quadDir1 < 3);
   const int quadDir2 = 3 - quadDir1 - line.dir;
@@ -198,10 +239,6 @@ void Kdtree::contourEdge(EdgeKd &nodes,
   }
   glm::vec3 minEnd = codeToPos(minEndCode, Octree::cellSize);
   glm::vec3 maxEnd = codeToPos(maxEndCode, Octree::cellSize);
-
-  if (line.point[2] == 1 && line.point[1] == 0 && line.dir == 0) { ;
-  }
-  detectQuad(nodes, line, threshold);
   for (int i = 0; i < 4; ++i) {
     if (nodes[i] != nodes[oppositeQuadIndex(i)]) {
       while (!nodes[i]->isLeaf(threshold) && nodes[i]->planeDir != line.dir) {

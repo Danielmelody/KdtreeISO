@@ -27,7 +27,7 @@ public:
   static void setCellSize(float size);
   static Octree *buildWithTopology(PositionCode minCode, int depth, Topology *topology, int &loselessCut);
   static void getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefSolver& out);
-  static Kdtree *generateKdtree(Octree *root, PositionCode minCode, PositionCode maxCode, int depth);
+  static Kdtree *generateKdtree(Octree *root, PositionCode minCode, PositionCode maxCode, Topology *t, int depth);
   static int simplify(Octree *root, float threshold, Topology *geometry);
   static void reverseExtendedSimplify(Octree *root, Topology *g);
   static Octree *extendedSimplify(Octree *root,

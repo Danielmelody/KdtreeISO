@@ -118,7 +118,7 @@ void Octree::getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefS
   }
 }
 
-Kdtree *Octree::generateKdtree(Octree *root, PositionCode minCode, PositionCode maxCode, int depth) {
+Kdtree *Octree::generateKdtree(Octree *root, PositionCode minCode, PositionCode maxCode, Topology *t, int depth) {
   if (glm::any(glm::greaterThanEqual(minCode, maxCode))) {
     return nullptr;
   }
@@ -130,34 +130,44 @@ Kdtree *Octree::generateKdtree(Octree *root, PositionCode minCode, PositionCode 
   PositionCode bestRightMinCode = maxCode, bestLeftMaxCode = minCode;
   float minErrorDiff = 1e20;
   QefSolver leftSum, rightSum;
-  int bestDir = -1;
-  for (int dir = 0; dir < 3; ++dir) {
-    for (int axis = minCode[dir] + 1; axis < maxCode[dir]; ++axis) {
-      PositionCode rightMinCode = minCode;
-      rightMinCode[dir] = axis;
 
-      PositionCode leftMaxCode = maxCode;
-
-      leftMaxCode[dir] = axis;
-      glm::vec3 leftApproximate, rightApproximate;
-      leftSum.reset();
-      rightSum.reset();
-      float leftError, rightError;
-      getSum(root, minCode, leftMaxCode, leftSum);
-      getSum(root, rightMinCode, maxCode, rightSum);
+  auto size = maxCode - minCode;
+  int dir = 0;
+  if (size[1] > size[0]) {
+    dir = 1;
+  }
+  if (size[2] > size[dir]) {
+    dir = 2;
+  }
+  for (int axis = minCode[dir] + 1; axis < maxCode[dir]; ++axis) {
+    PositionCode rightMinCode = minCode;
+    rightMinCode[dir] = axis;
+    PositionCode leftMaxCode = maxCode;
+    leftMaxCode[dir] = axis;
+    glm::vec3 leftApproximate, rightApproximate;
+    leftSum.reset();
+    rightSum.reset();
+    float leftError = 0.f;
+    float rightError = 0.f;
+    getSum(root, minCode, leftMaxCode, leftSum);
+    getSum(root, rightMinCode, maxCode, rightSum);
+    if (leftSum.pointCount > 0) {
       leftSum.solve(leftApproximate, leftError);
+    }
+    if (rightSum.pointCount > 0) {
       rightSum.solve(rightApproximate, rightError);
-      if (abs(rightError - leftError) < minErrorDiff) {
-        minErrorDiff = abs(rightError - leftError);
-        bestDir = dir;
-        bestLeftMaxCode = leftMaxCode;
-        bestRightMinCode = rightMinCode;
-      }
+    }
+    if (abs(rightError - leftError) < minErrorDiff) {
+      minErrorDiff = abs(rightError - leftError);
+      bestLeftMaxCode = leftMaxCode;
+      bestRightMinCode = rightMinCode;
     }
   }
-  auto kd = new Kdtree(sum, minCode, maxCode, bestDir, depth);
-  kd->children[0] = generateKdtree(root, minCode, bestLeftMaxCode, depth + 1);
-  kd->children[1] = generateKdtree(root, bestRightMinCode, maxCode, depth + 1);
+  auto kd = new Kdtree(sum, minCode, maxCode, dir, depth);
+  kd->children[0] = generateKdtree(root, minCode, bestLeftMaxCode, t, depth + 1);
+  kd->children[1] = generateKdtree(root, bestRightMinCode, maxCode, t, depth + 1);
+  kd->assignSign(t);
+  kd->calClusterability();
   return kd;
 }
 

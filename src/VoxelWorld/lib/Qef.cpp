@@ -222,6 +222,7 @@ float QefSolver::getError(const glm::vec3 &p) {
 }
 
 void QefSolver::solve(glm::vec3 &hermiteP, float &error) {
+  assert(pointCount > 0);
   calRoughness();
   glm::vec3 massPoint = massPointSum / (float) pointCount;
   glm::vec3 _ATb = ATb - svd_vmul_sym(ATA, massPoint);

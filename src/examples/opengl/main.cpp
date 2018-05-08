@@ -205,7 +205,7 @@ int main() {
           glm::radians(0.f),
           vec3(1, 0, 0)
       ),
-      new Intersection(
+      new Difference(
           new AABB(vec3(-4.3, -4.3, -3.2), vec3(4.3, 4.3, -2.8)),
           new Sphere(4, vec3(0, 0, -3))
       )
@@ -238,17 +238,17 @@ int main() {
 //      new Sphere(4.3f)
   );
   int svoCull = 0;
-  int octDepth = 5;
+  int octDepth = 6;
   Octree::setCellSize(0.6f);
   PositionCode sizeCode = PositionCode(1 << (octDepth - 1));
-  float threshold = 1e-2;
+  float threshold = 1e1;
 
   auto octree = Octree::buildWithTopology(-sizeCode / 2, octDepth, &g, svoCull);
   auto *octreeVisual = new Mesh();
   unordered_set<Vertex *> visualUtil;
   Octree::drawOctrees(octree, octreeVisual, visualUtil);
 
-  auto kdtree = Octree::generateKdtree(octree, -sizeCode / 2, sizeCode / 2, 0);
+  auto kdtree = Octree::generateKdtree(octree, -sizeCode / 2, sizeCode / 2, &g, 0);
   auto *kdtreeVisual = new Mesh();
   Kdtree::drawKdtree(kdtree, kdtreeVisual, threshold);
 
@@ -263,7 +263,7 @@ int main() {
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
 //  cout << "vertex count: " << mesh->positions.size() << endl;
   cout << "intersection contours: " << intersectionPreservingVerticesCount << endl;
-  mesh->generateFlatNormals();
+  // mesh->generateFlatNormals();
 //
   Program program;
   if (!program.init(vert, frag)) {
@@ -287,7 +287,7 @@ int main() {
       setUniforms(program);
       drawMesh(mesh, meshBuffers[0], program, true, true);
       // drawMesh(octreeVisual, meshBuffers[1], program, false, true);
-      // drawMesh(kdtreeVisual, meshBuffers[2], program, false, true);
+      drawMesh(kdtreeVisual, meshBuffers[2], program, false, true);
       glfwSwapBuffers(window);
       inited = true;
     }
