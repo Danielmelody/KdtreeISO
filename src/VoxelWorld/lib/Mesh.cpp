@@ -7,11 +7,11 @@
 
 void Mesh::generateFlatNormals() {
   normals.resize(positions.size());
-  std::vector<glm::vec3> flat_positions;
-  std::vector<glm::vec3> flat_normals;
+  std::vector<glm::fvec3> flat_positions;
+  std::vector<glm::fvec3> flat_normals;
   std::vector<unsigned int> flat_indices;
   for (unsigned int i = 0; i < indices.size() / 3; ++i) {
-    glm::vec3 normal = glm::normalize(
+    glm::fvec3 normal = glm::normalize(
         normals[indices[i * 3 + 0]] +
             normals[indices[i * 3 + 1]] +
             normals[indices[i * 3 + 2]]
@@ -38,11 +38,11 @@ void Mesh::addTriangle(Vertex **vertices, Topology *g) {
   for (int j = 0; j < 3; ++j) {
     auto targetVert = vertices[j];
     Vertex *adjacentVerts[2] = {vertices[(j + 1) % 3], vertices[(j + 2) % 3]};
-    glm::vec3 offset =
+    glm::fvec3 offset =
         adjacentVerts[1]->hermiteP - targetVert->hermiteP +
             adjacentVerts[0]->hermiteP - targetVert->hermiteP;
     offset *= 0.05f;
-    glm::vec3 normal;
+    glm::fvec3 normal;
     g->normal(targetVert->hermiteP + offset, normal);
     if (glm::dot(normal, targetVert->hermiteN) < std::cos(glm::radians(15.f))) {
       indices.push_back(static_cast<unsigned int>(positions.size()));
@@ -54,11 +54,11 @@ void Mesh::addTriangle(Vertex **vertices, Topology *g) {
   }
   
 }
-void Mesh::drawAABBDebug(glm::vec3 min, glm::vec3 max) {
+void Mesh::drawAABBDebug(glm::fvec3 min, glm::fvec3 max) {
   auto offset = max - min;
   for (int i = 0; i < 3; ++i) {
     for(int j = 0; j < 2; ++j) {
-      vec3 quad[4];
+      fvec3 quad[4];
       for (int k = 0; k < 4; ++k) {
         quad[k] = min + offset * min_offset_subdivision(cellProcFaceMask[i * 4 + k][j]);
       }

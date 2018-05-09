@@ -9,9 +9,9 @@
 
 struct Vertex {
   unsigned int vertexIndex;
-  glm::vec3 hermiteP;
-  glm::vec3 hermiteN;
-  explicit Vertex(glm::vec3 hermiteP) : vertexIndex(0), hermiteP(hermiteP), hermiteN(glm::vec3(0)) {}
+  glm::fvec3 hermiteP;
+  glm::fvec3 hermiteN;
+  explicit Vertex(glm::fvec3 hermiteP) : vertexIndex(0), hermiteP(hermiteP), hermiteN(glm::fvec3(0)) {}
   Vertex() = default;
 };
 

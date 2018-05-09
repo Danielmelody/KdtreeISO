@@ -9,6 +9,7 @@
 #include <array>
 #include "Utils.h"
 #include "Qef.h"
+#include "RectilinearGrid.h"
 #include "Mesh.h"
 #include "AxisAlignedLine.h"
 
@@ -20,14 +21,9 @@ struct Kdtree {
 
   typedef std::array<Kdtree *, 2> FaceKd;
   typedef std::array<Kdtree *, 4> EdgeKd;
-  const QefSolver qef;
-  PositionCode minCode;
-  PositionCode maxCode;
+  RectilinearGrid grid;
   int planeDir;
   int depth;
-  std::vector<Vertex> vertices;
-  float error{0.f};
-  uint8_t cornerSigns[8]{};
   bool clusterability {true};
   Kdtree *children[2]{nullptr, nullptr};
   Kdtree(QefSolver sum,
@@ -36,24 +32,19 @@ struct Kdtree {
          int dir,
          int depth)
       :
-      qef(sum),
-      minCode(minCode),
-      maxCode(maxCode),
+      grid(minCode, maxCode, sum),
       planeDir(dir),
-      depth(depth) {
-    vertices.resize(1);
-    sum.solve(vertices[0].hermiteP, error);
-  }
-  inline bool isLeaf(float threshold) { return clusterability && (error < threshold || (!children[0] && !children[1])); }
+      depth(depth) {}
+  inline bool isLeaf(float threshold) { return clusterability && (grid.error < threshold || (!children[0] && !children[1])); }
   inline int axis() {
     assert(!isLeaf(-1));
     if (children[0]) {
-      return children[0]->maxCode[planeDir];
+      return children[0]->grid.maxCode[planeDir];
     }
-    return children[1]->minCode[planeDir];
+    return children[1]->grid.minCode[planeDir];
   }
   inline Kdtree *getChild(int i, float threshold) {
-    if (error < threshold) {
+    if (grid.error < threshold) {
       return this;
     }
     return children[i];
@@ -62,7 +53,6 @@ struct Kdtree {
     delete children[0];
     delete children[1];
   }
-  void assignSign(Topology *t);
   void calClusterability();
   static void drawKdtree(Kdtree *root, Mesh *mesh, float threshold);
   static Mesh *extractMesh(Kdtree *root, Topology *t, float threshold);

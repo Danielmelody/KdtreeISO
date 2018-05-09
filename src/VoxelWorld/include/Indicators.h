@@ -7,18 +7,18 @@
 
 #include "Utils.h"
 
-using glm::vec3;
+using glm::fvec3;
 
-inline const vec3 &min_offset_subdivision(int i) {
-  static const vec3 offsets[8] = {
-      vec3(0.f, 0.f, 0.f),
-      vec3(0.f, 0.f, 1.f),
-      vec3(0.f, 1.f, 0.f),
-      vec3(0.f, 1.f, 1.f),
-      vec3(1.f, 0.f, 0.f),
-      vec3(1.f, 0.f, 1.f),
-      vec3(1.f, 1.f, 0.f),
-      vec3(1.f, 1.f, 1.f),
+inline const fvec3 &min_offset_subdivision(int i) {
+  static const fvec3 offsets[8] = {
+      fvec3(0.f, 0.f, 0.f),
+      fvec3(0.f, 0.f, 1.f),
+      fvec3(0.f, 1.f, 0.f),
+      fvec3(0.f, 1.f, 1.f),
+      fvec3(1.f, 0.f, 0.f),
+      fvec3(1.f, 0.f, 1.f),
+      fvec3(1.f, 1.f, 0.f),
+      fvec3(1.f, 1.f, 1.f),
   };
   assert(i >= 0 && i < 8);
   return offsets[i];
@@ -39,11 +39,11 @@ inline const PositionCode &min_offset_subdivision_code(int i) {
   return offsets[i];
 };
 
-inline const vec3 &directionMap(int i) {
-  static const vec3 offsets[3] = {
-      vec3(1.f, 0.f, 0.f),
-      vec3(0.f, 1.f, 0.f),
-      vec3(0.f, 0.f, 1.f),
+inline const fvec3 &directionMap(int i) {
+  static const fvec3 offsets[3] = {
+      fvec3(1.f, 0.f, 0.f),
+      fvec3(0.f, 1.f, 0.f),
+      fvec3(0.f, 0.f, 1.f),
   };
   assert(i >= 0 && i < 3);
   return offsets[i];
@@ -78,11 +78,11 @@ const int faceProcFaceMask[3][4][3] = {
 
 const int edgeTestNodeOrder[4][2] = {{0, 1}, {3, 2}, {1, 2}, {0, 3}};
 
-inline const vec3 &faceSubDivision(int dir, int i) {
-  static const vec3 offsets[3][4] = {
-      {vec3(0.f, 0.f, 0.f), vec3(0.f, 0.f, 1.f), vec3(0.f, 1.f, 0.f), vec3(0.f, 1.f, 1.f),},
-      {vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 0.f), vec3(0.f, 0.f, 1.f), vec3(1.f, 0.f, 1.f),},
-      {vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f), vec3(1.f, 0.f, 0.f), vec3(1.f, 1.f, 0.f),},
+inline const fvec3 &faceSubDivision(int dir, int i) {
+  static const fvec3 offsets[3][4] = {
+      {fvec3(0.f, 0.f, 0.f), fvec3(0.f, 0.f, 1.f), fvec3(0.f, 1.f, 0.f), fvec3(0.f, 1.f, 1.f),},
+      {fvec3(0.f, 0.f, 0.f), fvec3(1.f, 0.f, 0.f), fvec3(0.f, 0.f, 1.f), fvec3(1.f, 0.f, 1.f),},
+      {fvec3(0.f, 0.f, 0.f), fvec3(0.f, 1.f, 0.f), fvec3(1.f, 0.f, 0.f), fvec3(1.f, 1.f, 0.f),},
   };
   assert(i >= 0 && i < 4);
   return offsets[dir][i];
@@ -94,11 +94,11 @@ const int faceProcEdgeMask[3][4][6] = {
     {{1, 1, 3, 2, 0, 0}, {1, 5, 7, 6, 4, 0}, {0, 1, 0, 4, 5, 1}, {0, 3, 2, 6, 7, 1}}
 };
 
-inline const vec3 &edgeProcDir(int i, int j) {
-  const static vec3 dirs[3][4] = {
-      {vec3(0.f, -1.f, -1.f), vec3(0.f, -1.f, 1.f), vec3(0.f, 1.f, 1.f), vec3(0.f, 1.f, -1.f),},
-      {vec3(-1.f, 0.f, -1.f), vec3(-1.f, 0.f, 1.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, -1.f),},
-      {vec3(-1.f, -1.f, 0.f), vec3(1.f, -1.f, 0.f), vec3(1.f, 1.f, 0.f), vec3(-1.f, 1.f, 0.f),},
+inline const fvec3 &edgeProcDir(int i, int j) {
+  const static fvec3 dirs[3][4] = {
+      {fvec3(0.f, -1.f, -1.f), fvec3(0.f, -1.f, 1.f), fvec3(0.f, 1.f, 1.f), fvec3(0.f, 1.f, -1.f),},
+      {fvec3(-1.f, 0.f, -1.f), fvec3(-1.f, 0.f, 1.f), fvec3(1.f, 0.f, 1.f), fvec3(1.f, 0.f, -1.f),},
+      {fvec3(-1.f, -1.f, 0.f), fvec3(1.f, -1.f, 0.f), fvec3(1.f, 1.f, 0.f), fvec3(-1.f, 1.f, 0.f),},
   };
   assert(i >= 0 && i < 3 && i >= 0 && i < 4);
   return dirs[i][j];

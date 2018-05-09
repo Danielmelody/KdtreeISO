@@ -7,13 +7,13 @@
 
 #include <glm/glm.hpp>
 
-using glm::vec3;
+using glm::fvec3;
 
-typedef glm::ivec3 PositionCode;
+typedef glm::tvec3<int> PositionCode;
 
-inline bool segmentFaceIntersection(const vec3 &va, const vec3 &vb, const vec3 &min, const vec3& max, int dir) {
+inline bool segmentFaceIntersection(const fvec3 &va, const fvec3 &vb, const fvec3 &min, const fvec3& max, int dir) {
   float l = (vb - va)[dir];
-  vec3 p = (min - va)[dir] / l * vb + (vb - min)[dir] / l * va;
+  fvec3 p = (min - va)[dir] / l * vb + (vb - min)[dir] / l * va;
   for (int i = 0; i < 3; ++i) {
     if (dir != i) {
       if (p[i] < min[i] || p[i] > max[i]) {
@@ -45,8 +45,8 @@ template <typename C> struct ContainerHasher
   }
 };
 
-inline glm::vec3 codeToPos(PositionCode code, float cellSize) {
-  return vec3((float) code.x * cellSize, (float) code.y * cellSize, (float) code.z * cellSize);
+inline glm::fvec3 codeToPos(PositionCode code, float cellSize) {
+  return fvec3((float) code.x * cellSize, (float) code.y * cellSize, (float) code.z * cellSize);
 }
 
 

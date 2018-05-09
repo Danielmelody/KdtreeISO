@@ -9,16 +9,16 @@
 
 const float Tiny_Number = 1.e-4;
 
-glm::vec3 svd_vmul_sym(const glm::mat3x3 &a, const glm::vec3 &v) {
-  return glm::vec3(
+glm::fvec3 svd_vmul_sym(const glm::mat3x3 &a, const glm::fvec3 &v) {
+  return glm::fvec3(
       (a[0][0] * v.x) + (a[0][1] * v.y) + (a[0][2] * v.z),
       (a[0][1] * v.x) + (a[1][1] * v.y) + (a[1][2] * v.z),
       (a[0][2] * v.x) + (a[1][2] * v.y) + (a[2][2] * v.z)
   );
 }
 
-float qef_calc_error(const glm::mat3x3& A, const glm::vec3& x, const glm::vec3& ATb, const float btb) {
-  glm::vec3 atax = svd_vmul_sym(A, x);
+float qef_calc_error(const glm::mat3x3& A, const glm::fvec3& x, const glm::fvec3& ATb, const float btb) {
+  glm::fvec3 atax = svd_vmul_sym(A, x);
   return glm::dot(x, atax) - 2 * glm::dot(x, ATb) + btb;
 }
 
@@ -43,7 +43,7 @@ float svd_invdet(float x, float tol) {
   return (std::abs(x) < tol || std::abs(1.0f / x) < tol) ? 0.0f : 1.0f / x;
 }
 
-void svd_pseudoinverse(glm::mat3x3 &o, const glm::vec3 &sigma, const glm::mat3x3 &v) {
+void svd_pseudoinverse(glm::mat3x3 &o, const glm::fvec3 &sigma, const glm::mat3x3 &v) {
   float d0 = svd_invdet(sigma[0], Tiny_Number);
   float d1 = svd_invdet(sigma[1], Tiny_Number);
   float d2 = svd_invdet(sigma[2], Tiny_Number);
@@ -112,7 +112,7 @@ void svd_rotate(glm::mat3x3 &vtav, glm::mat3x3 &v, int a, int b) {
   v[2][b] = y;
 }
 
-void svd_solve_sym(glm::mat3x3 vtav, glm::vec3 &sigma, glm::mat3x3 &v) {
+void svd_solve_sym(glm::mat3x3 vtav, glm::fvec3 &sigma, glm::mat3x3 &v) {
   // assuming that A is symmetric: can optimize all operations for
   // the upper right triagonal
   // assuming V is identity: you can also pass a matrix the rotations
@@ -123,27 +123,27 @@ void svd_solve_sym(glm::mat3x3 vtav, glm::vec3 &sigma, glm::mat3x3 &v) {
     svd_rotate(vtav, v, 0, 2);
     svd_rotate(vtav, v, 1, 2);
   }
-  sigma = glm::vec3(vtav[0][0], vtav[1][1], vtav[2][2]);
+  sigma = glm::fvec3(vtav[0][0], vtav[1][1], vtav[2][2]);
 }
 
-glm::vec3 svd_solve_ATA_ATb(const glm::mat3x3 &ATA, const glm::vec3 &ATb) {
+glm::fvec3 svd_solve_ATA_ATb(const glm::mat3x3 &ATA, const glm::fvec3 &ATb) {
   glm::mat3x3 V;
-  glm::vec3 sigma;
+  glm::fvec3 sigma;
   svd_solve_sym(ATA, sigma, V);
 
   // A = UEV^T; U = A / (E*V^T)
   glm::mat3x3 Vinv;
   svd_pseudoinverse(Vinv, sigma, V);
-  glm::vec3 x = Vinv * ATb;
+  glm::fvec3 x = Vinv * ATb;
   return x;
 }
 
 void QefSolver::reset() {
   ATA = glm::mat4(0.f);
-  ATb = glm::vec3(0.f);
+  ATb = glm::fvec3(0.f);
   btb = 0.f;
-  massPointSum = glm::vec3(0.f);
-  averageNormalSum = glm::vec3(0.f);
+  massPointSum = glm::fvec3(0.f);
+  averageNormalSum = glm::fvec3(0.f);
   pointCount = 0;
 }
 
@@ -198,7 +198,7 @@ void QefSolver::separate(const QefSolver &other) {
   calRoughness();
 }
 
-void QefSolver::add(const glm::vec3 &p, const glm::vec3 &n) {
+void QefSolver::add(const glm::fvec3 &p, const glm::fvec3 &n) {
   ATA[0][0] += n.x * n.x;
   ATA[0][1] += n.x * n.y;
   ATA[0][2] += n.x * n.z;
@@ -217,16 +217,17 @@ void QefSolver::calRoughness() {
   roughness = 1.f - glm::length(averageNormalSum) / (float)pointCount;
 }
 
-float QefSolver::getError(const glm::vec3 &p) {
+float QefSolver::getError(const glm::fvec3 &p) {
   return qef_calc_error(ATA, p, ATb, btb);
 }
 
-void QefSolver::solve(glm::vec3 &hermiteP, float &error) {
-  assert(pointCount > 0);
-  calRoughness();
-  glm::vec3 massPoint = massPointSum / (float) pointCount;
-  glm::vec3 _ATb = ATb - svd_vmul_sym(ATA, massPoint);
-  hermiteP = svd_solve_ATA_ATb(ATA, _ATb);
-  hermiteP += massPoint;
-  error = qef_calc_error(ATA, hermiteP, ATb, btb);
+void QefSolver::solve(glm::fvec3 &hermiteP, float &error) {
+  if(pointCount > 0) {
+    calRoughness();
+    glm::fvec3 massPoint = massPointSum / (float) pointCount;
+    glm::fvec3 _ATb = ATb - svd_vmul_sym(ATA, massPoint);
+    hermiteP = svd_solve_ATA_ATb(ATA, _ATb);
+    hermiteP += massPoint;
+    error = qef_calc_error(ATA, hermiteP, ATb, btb);
+  }
 }

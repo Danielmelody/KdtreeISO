@@ -12,7 +12,7 @@
 #include "program.h"
 #include "Utils.h"
 
-using glm::vec3;
+using glm::fvec3;
 using glm::mat4;
 using glm::normalize;
 using glm::radians;
@@ -76,10 +76,10 @@ struct MeshBuffer {
 
 void addMesh(Mesh *mesh, const MeshBuffer &buffer) {
   glBindBuffer(GL_ARRAY_BUFFER, buffer.positions);
-  glBufferData(GL_ARRAY_BUFFER, mesh->positions.size() * sizeof(glm::vec3), &(mesh->positions[0]), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, mesh->positions.size() * sizeof(fvec3), &(mesh->positions[0]), GL_STATIC_DRAW);
 
   glBindBuffer(GL_ARRAY_BUFFER, buffer.normals);
-  glBufferData(GL_ARRAY_BUFFER, mesh->normals.size() * sizeof(glm::vec3), &(mesh->normals[0]), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, mesh->normals.size() * sizeof(fvec3), &(mesh->normals[0]), GL_STATIC_DRAW);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.indices);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,
@@ -104,13 +104,13 @@ void drawMesh(Mesh *mesh,
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.indices);
 
   if (wireframe) {
-    p.setVec3("albedo", glm::vec3(1, 1, 1));
+    p.setVec3("albedo", fvec3(1, 1, 1));
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
   }
 
   if (shaded) {
-    p.setVec3("albedo", glm::vec3(1, 0, 0));
+    p.setVec3("albedo", fvec3(1, 0, 0));
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
   }
@@ -121,14 +121,14 @@ void drawMesh(Mesh *mesh,
 
 void setUniforms(Program &program) {
   mat4 p = glm::perspective(radians(45.f), 4.f / 3.f, 0.1f, 1000.f);
-  mat4 m = glm::rotate(mat4(), rotateX, vec3(0, 1, 0));
-  m = glm::rotate(m, rotateY, vec3(1, 0, 0));
-  mat4 v = glm::lookAt(vec3(0, 0, cameraOffset), vec3(0, 0, -1), vec3(0, 1, 0));
+  mat4 m = glm::rotate(mat4(), rotateX, fvec3(0, 1, 0));
+  m = glm::rotate(m, rotateY, fvec3(1, 0, 0));
+  mat4 v = glm::lookAt(fvec3(0, 0, cameraOffset), fvec3(0, 0, -1), fvec3(0, 1, 0));
   program.setMat4("m", m);
   program.setMat4("mvp", p * v * m);
-  program.setVec3("albedo", vec3(1.0f, 1.0f, 1.0f));
+  program.setVec3("albedo", fvec3(1.0f, 1.0f, 1.0f));
   program.setFloat("specular", 0.f);
-  program.setVec3("lightDir", normalize(vec3(0.f, 0.f, 1.f)));
+  program.setVec3("lightDir", normalize(fvec3(0.f, 0.f, 1.f)));
 }
 
 void error(int error, const char *description) {
@@ -201,18 +201,18 @@ int main() {
 
   Transform g(
       glm::rotate(
-          glm::translate(mat4(1.f), vec3(0, 0, 0)),
+          glm::translate(mat4(1.f), fvec3(0, 0, 0)),
           glm::radians(0.f),
-          vec3(1, 0, 0)
+          fvec3(1, 0, 0)
       ),
       new Difference(
-          new AABB(vec3(-4.3, -4.3, -3.2), vec3(4.3, 4.3, -2.8)),
-          new Sphere(4, vec3(0, 0, -3))
+          new AABB(fvec3(-4.3, -4.3, -3.2), fvec3(4.3, 4.3, -2.8)),
+          new Sphere(4, fvec3(0, 0, -3))
       )
 //  new Difference(
 //      new Union(
-//          new AABB(vec3(-1.5f, -2, -1.5f), vec3(1.5f, 2, 1.5f)),
-//          new AABB(vec3(-1, -5, -1), vec3(1, 5, 1))
+//          new AABB(fvec3(-1.5f, -2, -1.5f), fvec3(1.5f, 2, 1.5f)),
+//          new AABB(fvec3(-1, -5, -1), fvec3(1, 5, 1))
 //      ),
 //      new Sphere(1.9f)
 //  )
@@ -220,33 +220,31 @@ int main() {
 //      new Union(
 //          new Torus(5.f, 1.f),
 //          new ExpUnion(
-//              new Sphere(2, vec3(1.5, 1.5, 0)),
-//              new Sphere(2, vec3(-1.5, -1.5, 0)),
+//              new Sphere(2, fvec3(1.5, 1.5, 0)),
+//              new Sphere(2, fvec3(-1.5, -1.5, 0)),
 //              1
 //          )
 //      )
 //      new Difference(
-//          new AABB(vec3(-4.3f), vec3(4.3f)),
-//          new Sphere(3, vec3(0, 5, 0))
+//          new AABB(fvec3(-4.3f), fvec3(4.3f)),
+//          new Sphere(3, fvec3(0, 5, 0))
 //      )
 //      new Heart(5)
-//      new AABB(vec3(-5), vec3(5))
+//      new AABB(fvec3(-5), fvec3(5))
 //      new Difference(
-//          new AABB(vec3(-4, -4, -0.2), vec3(4, 4, 0.2)),
-//          new AABB(vec3(-1.5f), vec3(1.5f))
+//          new AABB(fvec3(-4, -4, -0.2), fvec3(4, 4, 0.2)),
+//          new AABB(fvec3(-1.5f), fvec3(1.5f))
 //      )
 //      new Sphere(4.3f)
   );
-  int svoCull = 0;
   int octDepth = 6;
-  Octree::setCellSize(0.6f);
+  RectilinearGrid::setUnitSize(0.6f);
   PositionCode sizeCode = PositionCode(1 << (octDepth - 1));
   float threshold = 1e1;
 
-  auto octree = Octree::buildWithTopology(-sizeCode / 2, octDepth, &g, svoCull);
+  auto octree = Octree::buildWithTopology(-sizeCode / 2, octDepth, &g);
   auto *octreeVisual = new Mesh();
-  unordered_set<Vertex *> visualUtil;
-  Octree::drawOctrees(octree, octreeVisual, visualUtil);
+  Octree::drawOctrees(octree, octreeVisual);
 
   auto kdtree = Octree::generateKdtree(octree, -sizeCode / 2, sizeCode / 2, &g, 0);
   auto *kdtreeVisual = new Mesh();
@@ -287,7 +285,7 @@ int main() {
       setUniforms(program);
       drawMesh(mesh, meshBuffers[0], program, true, true);
       // drawMesh(octreeVisual, meshBuffers[1], program, false, true);
-      drawMesh(kdtreeVisual, meshBuffers[2], program, false, true);
+      // drawMesh(kdtreeVisual, meshBuffers[2], program, false, true);
       glfwSwapBuffers(window);
       inited = true;
     }

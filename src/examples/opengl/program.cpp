@@ -122,7 +122,7 @@ bool Program::setMat4(const char *name, const glm::mat4 &uniform) {
   return true;
 }
 
-bool Program::setVec3(const char *name, const glm::vec3 &uniform) {
+bool Program::setVec3(const char *name, const glm::fvec3 &uniform) {
   const GLint location = getUniformLocation(name);
   if (location == -1) {
     return false;

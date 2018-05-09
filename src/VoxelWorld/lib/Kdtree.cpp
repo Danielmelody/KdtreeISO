@@ -3,7 +3,7 @@
 //
 
 
-
+#include <set>
 #include "Kdtree.h"
 #include "Octree.h"
 #include "Indicators.h"
@@ -14,16 +14,6 @@
 
 using glm::max;
 using glm::min;
-
-void Kdtree::assignSign(Topology *t) {
-  auto min = codeToPos(minCode, Octree::cellSize);
-  auto size = codeToPos(maxCode - minCode, Octree::cellSize);
-  int8_t mtlID = t->getMaterialID();
-  for (int i = 0; i < 8; ++i) {
-    float val = t->value(min + size * min_offset_subdivision(i));
-    cornerSigns[i] = (uint8_t) (val > 0. ? mtlID : 0);
-  }
-}
 
 void Kdtree::calClusterability() {
   if (!children[0] || !children[1]) {
@@ -40,7 +30,7 @@ void Kdtree::calClusterability() {
     int edgeMaxIndex = cellProcFaceMask[planeDir * 4 + i][1];
     int signChanges = 0;
     for (int j = 0; j < 2; ++j) {
-      if (children[j]->cornerSigns[edgeMinIndex] != children[j]->cornerSigns[edgeMaxIndex]) {
+      if (children[j]->grid.cornerSigns[edgeMinIndex] != children[j]->grid.cornerSigns[edgeMaxIndex]) {
         signChanges++;
       }
     }
@@ -55,27 +45,9 @@ void Kdtree::drawKdtree(Kdtree *root, Mesh *mesh, float threshold) {
   if (!root) {
     return;
   }
-  if (!root->clusterability) {
-    vec3 size = codeToPos(root->maxCode - root->minCode, Octree::cellSize);
-    vec3 min = codeToPos(root->minCode, Octree::cellSize);
-    for (int i = 0; i < 12; ++i) {
-      auto a = min_offset_subdivision(cellProcFaceMask[i][0]) * size + min;
-      auto b = min_offset_subdivision(cellProcFaceMask[i][1]) * size + min;
-
-      auto na = normalize(min_offset_subdivision(cellProcFaceMask[i][0]) - vec3(0.5f));
-      auto nb = normalize(min_offset_subdivision(cellProcFaceMask[i][1]) - vec3(0.5f));
-
-      mesh->positions.push_back(a);
-      mesh->positions.push_back(a);
-      mesh->positions.push_back(b);
-      mesh->normals.push_back(na);
-      mesh->normals.push_back(na);
-      mesh->normals.push_back(nb);
-      mesh->indices.push_back(static_cast<unsigned int &&>(mesh->indices.size()));
-      mesh->indices.push_back(static_cast<unsigned int &&>(mesh->indices.size()));
-      mesh->indices.push_back(static_cast<unsigned int &&>(mesh->indices.size()));
-    }
-//    return;
+  if (root->isLeaf(threshold)) {
+    root->grid.draw(mesh);
+    return;
   }
   drawKdtree(root->children[0], mesh, 0);
   drawKdtree(root->children[1], mesh, 0);
@@ -92,8 +64,8 @@ void Kdtree::generateVertexIndices(Kdtree *root, Mesh *mesh, Topology *t, float 
   if (!root) {
     return;
   }
-  mesh->addVertex(&root->vertices[0], t);
-  if (root->error >= threshold) {
+  mesh->addVertex(&root->grid.vertices[0], t);
+  if (root->grid.error >= threshold) {
     generateVertexIndices(root->children[0], mesh, t, threshold);
     generateVertexIndices(root->children[1], mesh, t, threshold);
   }
@@ -119,8 +91,8 @@ void Kdtree::contourCell(Kdtree *node, Mesh *mesh, Topology *t, float threshold)
 }
 
 bool checkMinialFace(const Kdtree::FaceKd &nodes, int dir, PositionCode &faceMin, PositionCode &faceMax) {
-  faceMax = min(nodes[0]->maxCode, nodes[1]->maxCode);
-  faceMin = max(nodes[0]->minCode, nodes[1]->minCode);
+  faceMax = min(nodes[0]->grid.maxCode, nodes[1]->grid.maxCode);
+  faceMin = max(nodes[0]->grid.minCode, nodes[1]->grid.minCode);
   auto offset = faceMax - faceMin;
   return offset[(dir + 1) % 3] > 0 && offset[(dir + 2) % 3] > 0;
 }
@@ -174,8 +146,8 @@ void Kdtree::contourFace(FaceKd &nodes,
 bool checkMinialEdge(const Kdtree::EdgeKd &nodes, const AALine &line, PositionCode &minEnd, PositionCode &maxEnd) {
   minEnd = maxEnd = line.point;
   int dir = line.dir;
-  minEnd[dir] = max(max(nodes[0]->minCode, nodes[1]->minCode), max(nodes[2]->minCode, nodes[3]->minCode))[dir];
-  maxEnd[dir] = min(min(nodes[0]->maxCode, nodes[1]->maxCode), min(nodes[2]->maxCode, nodes[3]->maxCode))[dir];
+  minEnd[dir] = max(max(nodes[0]->grid.minCode, nodes[1]->grid.minCode), max(nodes[2]->grid.minCode, nodes[3]->grid.minCode))[dir];
+  maxEnd[dir] = min(min(nodes[0]->grid.maxCode, nodes[1]->grid.maxCode), min(nodes[2]->grid.maxCode, nodes[3]->grid.maxCode))[dir];
   return minEnd[dir] < maxEnd[dir];
 }
 
@@ -190,9 +162,9 @@ void Kdtree::detectQuad(EdgeKd &nodes, AALine line, float threshold) {
   for (int i = 0; i < 2; ++i) {
     while (
         nodes[i * 2] && nodes[i * 2 + 1]
-        && !nodes[i * 2]->isLeaf(threshold)
-        && nodes[2 * i] == nodes[2 * i + 1]
-        && nodes[i * 2]->planeDir != line.dir) {
+            && !nodes[i * 2]->isLeaf(threshold)
+            && nodes[2 * i] == nodes[2 * i + 1]
+            && nodes[i * 2]->planeDir != line.dir) {
       auto commonNode = nodes[i * 2];
       if (nodes[i * 2]->axis() == line.point[nodes[i * 2]->planeDir]) {
         nodes[i * 2] = commonNode->children[0];
@@ -237,8 +209,8 @@ void Kdtree::contourEdge(EdgeKd &nodes,
   if (!checkMinialEdge(nodes, line, minEndCode, maxEndCode)) {
     return;
   }
-  glm::vec3 minEnd = codeToPos(minEndCode, Octree::cellSize);
-  glm::vec3 maxEnd = codeToPos(maxEndCode, Octree::cellSize);
+  glm::fvec3 minEnd = codeToPos(minEndCode, RectilinearGrid::getUnitSize());
+  glm::fvec3 maxEnd = codeToPos(maxEndCode, RectilinearGrid::getUnitSize());
   for (int i = 0; i < 4; ++i) {
     if (nodes[i] != nodes[oppositeQuadIndex(i)]) {
       while (!nodes[i]->isLeaf(threshold) && nodes[i]->planeDir != line.dir) {
@@ -249,13 +221,13 @@ void Kdtree::contourEdge(EdgeKd &nodes,
       }
     }
   }
-//  assert(nodes[0]->minCode[quadDir1] <= nodes[1]->minCode[quadDir1]);
-//  assert(nodes[2]->minCode[quadDir1] <= nodes[3]->minCode[quadDir1]);
-//  assert(nodes[0]->minCode[quadDir2] <= nodes[2]->minCode[quadDir2]);
-//  assert(nodes[1]->minCode[quadDir2] <= nodes[3]->minCode[quadDir2]);
+//  assert(nodes[0]->grid.minCode[quadDir1] <= nodes[1]->grid.minCode[quadDir1]);
+//  assert(nodes[2]->grid.minCode[quadDir1] <= nodes[3]->grid.minCode[quadDir1]);
+//  assert(nodes[0]->grid.minCode[quadDir2] <= nodes[2]->grid.minCode[quadDir2]);
+//  assert(nodes[1]->grid.minCode[quadDir2] <= nodes[3]->grid.minCode[quadDir2]);
 
 //  if ((maxEndCode - minEndCode)[0] == 1) {
-//    mesh->drawAABBDebug(codeToPos(minEndCode, Octree::cellSize), codeToPos(maxEndCode, Octree::cellSize));
+//    mesh->drawAABBDebug(codeToPos(minEndCode, RectilinearGrid::getUnitSize()), codeToPos(maxEndCode, RectilinearGrid::getUnitSize()));
 //  }
 
   if (nodes[0]->isLeaf(threshold) && nodes[1]->isLeaf(threshold) && nodes[2]->isLeaf(threshold)
@@ -282,25 +254,25 @@ void Kdtree::contourEdge(EdgeKd &nodes,
 
 void Kdtree::generateQuad(EdgeKd &nodes, Mesh *mesh, Topology *t) {
 //  for (auto n : nodes) {
-//    n->vertices[0].hermiteP = codeToPos(n->minCode + n->maxCode, Octree::cellSize) / 2.f;
-//    // mesh->drawAABBDebug(codeToPos(n->minCode, Octree::cellSize), codeToPos(n->maxCode, Octree::cellSize));
+//    n->grid.vertices[0].hermiteP = codeToPos(n->grid.minCode + n->grid.maxCode, RectilinearGrid::getUnitSize()) / 2.f;
+//    // mesh->drawAABBDebug(codeToPos(n->grid.minCode, RectilinearGrid::getUnitSize()), codeToPos(n->grid.maxCode, RectilinearGrid::getUnitSize()));
 //  }
 
   // return;
 
   std::vector<Vertex *> polygons;
 
-//  assert(glm::all(glm::greaterThanEqual(nodes[1]->minCode, nodes[0]->minCode)));
-//  assert(glm::all(glm::greaterThanEqual(nodes[3]->minCode, nodes[2]->minCode)));
-//  assert(glm::all(glm::greaterThanEqual(nodes[3]->minCode, nodes[0]->minCode)));
-//  assert(glm::all(glm::greaterThanEqual(nodes[3]->minCode, nodes[1]->minCode)));
-  polygons.push_back(&nodes[0]->vertices[0]);
+//  assert(glm::all(glm::greaterThanEqual(nodes[1]->grid.minCode, nodes[0]->grid.minCode)));
+//  assert(glm::all(glm::greaterThanEqual(nodes[3]->grid.minCode, nodes[2]->grid.minCode)));
+//  assert(glm::all(glm::greaterThanEqual(nodes[3]->grid.minCode, nodes[0]->grid.minCode)));
+//  assert(glm::all(glm::greaterThanEqual(nodes[3]->grid.minCode, nodes[1]->grid.minCode)));
+  polygons.push_back(&nodes[0]->grid.vertices[0]);
   if (nodes[0] != nodes[1]) {
-    polygons.push_back(&nodes[1]->vertices[0]);
+    polygons.push_back(&nodes[1]->grid.vertices[0]);
   }
-  polygons.push_back(&nodes[3]->vertices[0]);
+  polygons.push_back(&nodes[3]->grid.vertices[0]);
   if (nodes[2] != nodes[3]) {
-    polygons.push_back(&nodes[2]->vertices[0]);
+    polygons.push_back(&nodes[2]->grid.vertices[0]);
   }
   for (int i = 0; i < polygons.size() - 2; ++i) {
     Vertex *triangles[] = {polygons[0], polygons[i + 1], polygons[i + 2]};
