@@ -12,7 +12,7 @@ using glm::max;
 using glm::min;
 
 
-float gradient_offset = 0.003f;
+float gradient_offset = 0.01f;
 float divergence_offset = 0.01f;
 
 bool Topology::solve(const fvec3 &p1, const fvec3 &p2, fvec3 &out) {
@@ -42,7 +42,8 @@ void Topology::normal(const fvec3 &p, fvec3& out) {
   float nz = value(p + fvec3(0.f, 0.f, gradient_offset)) - value(p - fvec3(0.f, 0.f, gradient_offset));
 
   // auto g = fvec3(nx, ny, nz) / gradient_offset / 2.f;
-  out = normalize(fvec3(nx, ny, nz));
+  out = fvec3(nx, ny, nz) / gradient_offset / 2.f;
+  assert(!isnan(out.x));
 }
 
 void Topology::gradient(const fvec3 &p, fvec3& out) {
@@ -60,7 +61,7 @@ fvec3 Topology::gradient(const fvec3 &p) {
   float ny = value(p + fvec3(0.f, gradient_offset, 0.f)) - value(p - fvec3(0.f, gradient_offset, 0.f));
   float nz = value(p + fvec3(0.f, 0.f, gradient_offset)) - value(p - fvec3(0.f, 0.f, gradient_offset));
 
-  return fvec3(nx, ny, nz) / gradient_offset;
+  return fvec3(nx, ny, nz) / gradient_offset / 2.f;
 }
 
 float Topology::laplaceOperator(const fvec3 &p) {

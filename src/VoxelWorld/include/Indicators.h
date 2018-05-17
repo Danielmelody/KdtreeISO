@@ -8,6 +8,11 @@
 #include "Utils.h"
 
 using glm::fvec3;
+using glm::ivec3;
+
+inline int encodeCell(ivec3 code) {
+  return code.x * 4 + code.y * 2 + code.z;
+}
 
 inline const fvec3 &min_offset_subdivision(int i) {
   static const fvec3 offsets[8] = {
@@ -178,6 +183,23 @@ const int dirRelatedEdge[8][8][3] = {
 };
 
 const int processEdgeMask[3][4] = {{3, 2, 1, 0}, {7, 5, 6, 4}, {11, 10, 9, 8}};
+
+constexpr int oppositeQuadIndex(int i) {
+  return (i / 2) * 2 + 1 - i % 2;
+}
+
+constexpr int symmetryQuadIndex(int i) {
+  return (1 - i / 2) * 2 + 1 - i % 2;
+}
+
+inline void quadIndex(int quadDir1, int quadDir2, int i, int& p1, int& p2) {
+  ivec3 code(0);
+  code[quadDir1] = i % 2;
+  code[quadDir2] = i / 2;
+  p1 = encodeCell(code);
+  code[3 - quadDir1 - quadDir2] = 1;
+  p2 = encodeCell(code);
+}
 
 //const int triangleIndices[6] = {0, 1, 2, 0, 2, 3};
 //const int triangleIndicesFlip[6] = {0, 3, 2, 0, 2, 1};

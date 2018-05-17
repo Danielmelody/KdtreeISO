@@ -4,6 +4,7 @@
 
 #include <set>
 #include <Mesh.h>
+#include <map>
 #include "Indicators.h"
 #include "RectilinearGrid.h"
 
@@ -16,43 +17,97 @@ float RectilinearGrid::getUnitSize() {
   return unitSize;
 }
 
+void RectilinearGrid::solveComponent(int i) {
+  float error;
+  components[i].solve(vertices[i].hermiteP, error);
+  auto& p = vertices[i].hermiteP;
+  const auto min = codeToPos(minCode, RectilinearGrid::getUnitSize());
+  const auto max = codeToPos(maxCode, RectilinearGrid::getUnitSize());
+  if (p.x < min.x || p.x > max.x ||
+      p.y < min.y || p.y > max.y ||
+      p.z < min.z || p.z > max.z) {
+    p = components[i].massPointSum / (float) components[i].pointCount;
+  }
+}
+
 void RectilinearGrid::assignSign(Topology *t) {
   auto min = codeToPos(minCode, RectilinearGrid::getUnitSize());
   auto size = codeToPos(maxCode - minCode, RectilinearGrid::getUnitSize());
   int8_t mtlID = t->getMaterialID();
   for (int i = 0; i < 8; ++i) {
     float val = t->value(min + size * min_offset_subdivision(i));
-    cornerSigns[i] = (uint8_t) (val > 0. ? mtlID : 0);
+    if (minCode[2] == -1) {
+      ;
+    }
+    cornerSigns[i] = (uint8_t) (val > 0. ? 0 : mtlID);
   }
 }
 
 void RectilinearGrid::calCornerComponents() {
   std::set<int> clusters[8];
   for (int i = 0; i < 8; ++i) {
-    clusters[i].insert({i});
-    componentIndices[i] = static_cast<uint8_t>(i);
-  }
-  for (int i = 0; i < 12; ++i) {
-    if (cornerSigns[cellProcFaceMask[i][0]] == cornerSigns[cellProcFaceMask[i][1]]
-        && cornerSigns[cellProcFaceMask[i][1]] != 0) {
-      for (auto i : clusters[componentIndices[cellProcFaceMask[i][1]]]) {
-        clusters[componentIndices[cellProcFaceMask[i][0]]].insert(i);
-      }
-      componentIndices[cellProcFaceMask[i][1]] = static_cast<uint8_t>(cellProcFaceMask[i][0]);
+    if (cornerSigns[i] != 0) {
+      clusters[i].insert({i});
+      componentIndices[i] = static_cast<uint8_t>(i);
     }
   }
-  int reorderMap[8];
+  for (int i = 0; i < 12; ++i) {
+    int c1 = cellProcFaceMask[i][0];
+    int c2 = cellProcFaceMask[i][1];
+    if (cornerSigns[c1] == cornerSigns[c2]
+        && cornerSigns[c2] != 0) {
+      int co1 = componentIndices[c1];
+      int co2 = componentIndices[c2];
+      auto &c2Components = clusters[co2];
+      for (auto comp : c2Components) {
+        clusters[co1].insert(comp);
+      }
+      for (auto comp : clusters[co1]) {
+        componentIndices[comp] = static_cast<uint8_t>(co1);
+      }
+    }
+  }
+  int reorderMap[8]{0};
   for (int i = 0; i < 8; ++i) {
     reorderMap[i] = -1;
   }
   int new_order = 0;
   for (int i = 0; i < 8; ++i) {
-    if (reorderMap[componentIndices[i]] == -1) {
+    if (reorderMap[componentIndices[i]] == -1 && cornerSigns[i] != 0) {
       reorderMap[componentIndices[i]] = new_order++;
     }
   }
   for (int i = 0; i < 8; ++i) {
     componentIndices[i] = static_cast<uint8_t>(reorderMap[componentIndices[i]]);
+  }
+  vertices.resize(static_cast<unsigned long>(new_order));
+  components.resize(static_cast<unsigned long>(new_order));
+}
+
+void RectilinearGrid::sampleQef(Topology *t) {
+  calCornerComponents();
+  auto min = codeToPos(minCode, RectilinearGrid::getUnitSize());
+  auto size = codeToPos(maxCode - minCode, RectilinearGrid::getUnitSize());
+  fvec3 cornerPositions[8];
+  for (int i = 0; i < 8; ++i) {
+    cornerPositions[i] = min + size * min_offset_subdivision(i);
+  }
+  for (int i = 0; i < 12; ++i) {
+    fvec3 p1 = cornerPositions[edge_map[i][0]];
+    fvec3 p2 = cornerPositions[edge_map[i][1]];
+    if (cornerSigns[edge_map[i][0]] != cornerSigns[edge_map[i][1]]) {
+      fvec3 p, n;
+      if (t->solve(p1, p2, p)) {
+        t->normal(p, n);
+        int qefIndex = edgeComponentIndex(edge_map[i][0], edge_map[i][1]);
+        components.at(static_cast<unsigned long>(qefIndex)).add(p, n);
+      }
+    }
+  }
+  for (int i = 0; i < components.size(); ++i) {
+    solveComponent(i);
+    assert(components[i].pointCount);
+    t->normal(vertices[i].hermiteP, vertices[i].hermiteN);
   }
 }
 

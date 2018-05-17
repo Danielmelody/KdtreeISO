@@ -206,15 +206,15 @@ int main() {
           fvec3(1, 0, 0)
       ),
       new Difference(
-          new AABB(fvec3(-4.3, -4.3, -3.2), fvec3(4.3, 4.3, -2.8)),
-          new Sphere(4, fvec3(0, 0, -3))
+          new AABB(fvec3(-4), fvec3(4)),
+          new Cylinder(fvec3(0.f, 0.f, 3.f))
       )
 //  new Difference(
 //      new Union(
-//          new AABB(fvec3(-1.5f, -2, -1.5f), fvec3(1.5f, 2, 1.5f)),
-//          new AABB(fvec3(-1, -5, -1), fvec3(1, 5, 1))
-//      ),
-//      new Sphere(1.9f)
+//          new AABB(fvec3(-4, -4, -0.4f), fvec3(4, 4, -0.2f)),
+//          new AABB(fvec3(-4, -4, 0.2f), fvec3(4, 4, 0.4f))
+//      )
+//      new Sphere(4.1f)
 //  )
 
 //      new Union(
@@ -226,27 +226,30 @@ int main() {
 //          )
 //      )
 //      new Difference(
-//          new AABB(fvec3(-4.3f), fvec3(4.3f)),
-//          new Sphere(3, fvec3(0, 5, 0))
+//          new AABB(fvec3(-4.f, -2.2f, -4), fvec3(4.f, 2.2f, 4)),
+//          new Cylinder(fvec3(0.f, 0.f, 3.8f))
 //      )
 //      new Heart(5)
 //      new AABB(fvec3(-5), fvec3(5))
-//      new Difference(
-//          new AABB(fvec3(-4, -4, -0.2), fvec3(4, 4, 0.2)),
-//          new AABB(fvec3(-1.5f), fvec3(1.5f))
-//      )
+//  new Union(
+//      new Union(
+//          new AABB(fvec3(-4, -4, -3.5), fvec3(4, 4, -3.2)),
+//          new Sphere(4, fvec3(0, 0, 0))
+//      ),
+//      new AABB(fvec3(-4, -4, 3.2), fvec3(4, 4, 3.5))
+//  )
 //      new Sphere(4.3f)
   );
   int octDepth = 6;
-  RectilinearGrid::setUnitSize(0.6f);
+  RectilinearGrid::setUnitSize(0.55f);
   PositionCode sizeCode = PositionCode(1 << (octDepth - 1));
-  float threshold = 1e1;
+  float threshold = 1e-2;
 
   auto octree = Octree::buildWithTopology(-sizeCode / 2, octDepth, &g);
   auto *octreeVisual = new Mesh();
   Octree::drawOctrees(octree, octreeVisual);
 
-  auto kdtree = Octree::generateKdtree(octree, -sizeCode / 2, sizeCode / 2, &g, 0);
+  auto kdtree = Kdtree::buildFromOctree(octree, -sizeCode / 2, sizeCode / 2, &g, 0);
   auto *kdtreeVisual = new Mesh();
   Kdtree::drawKdtree(kdtree, kdtreeVisual, threshold);
 

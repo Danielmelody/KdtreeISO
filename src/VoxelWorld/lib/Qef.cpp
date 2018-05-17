@@ -8,6 +8,15 @@
 #define SVD_NUM_SWEEPS 5
 
 const float Tiny_Number = 1.e-4;
+// const float Tiny_Number_Erroring = 1.e-8;
+
+glm::fvec3 diag_of_mul(const glm::fvec3& v1T, const glm::fvec3 v2) {
+  return v1T * v2;
+}
+
+glm::fvec3 diag(const glm::mat3& m) {
+  return glm::fvec3(m[0][0], m[1][1], m[2][2]);
+}
 
 glm::fvec3 svd_vmul_sym(const glm::mat3x3 &a, const glm::fvec3 &v) {
   return glm::fvec3(
@@ -17,9 +26,14 @@ glm::fvec3 svd_vmul_sym(const glm::mat3x3 &a, const glm::fvec3 &v) {
   );
 }
 
-float qef_calc_error(const glm::mat3x3& A, const glm::fvec3& x, const glm::fvec3& ATb, const float btb) {
-  glm::fvec3 atax = svd_vmul_sym(A, x);
+float qef_calc_error(const glm::mat3x3& ATA, const glm::fvec3& x, const glm::fvec3& ATb, const float btb) {
+  glm::fvec3 atax = svd_vmul_sym(ATA, x);
   return glm::dot(x, atax) - 2 * glm::dot(x, ATb) + btb;
+}
+
+
+glm::fvec3 qef_calc_co_variance(const glm::mat3x3& ATA, const glm::fvec3& x, const glm::fvec3& diag_ATc, const glm::fvec3& diag_ctc) {
+  return x * diag(ATA) * x - 2.f * (x * diag_ATc) + diag_ctc;
 }
 
 void svd_rotate_xy(float &x, float &y, float c, float s) {
@@ -174,7 +188,9 @@ void QefSolver::combine(const QefSolver &other) {
   ATA[1][2] += other.ATA[1][2];
 
   ATb += other.ATb;
+  diag_ATc += other.diag_ATc;
   btb += other.btb;
+  diag_ctc += other.diag_ctc;
   massPointSum += other.massPointSum;
   pointCount += other.pointCount;
   averageNormalSum += other.averageNormalSum;
@@ -205,9 +221,12 @@ void QefSolver::add(const glm::fvec3 &p, const glm::fvec3 &n) {
   ATA[1][1] += n.y * n.y;
   ATA[1][2] += n.y * n.z;
   ATA[2][2] += n.z * n.z;
-  float dotp = glm::dot(p, n);;
+  float dotp = glm::dot(p, n);
+  glm::fvec3 c = p * n;
   ATb += n * dotp;
+  diag_ATc += n * c;
   btb += dotp * dotp;
+  diag_ctc += c * c;
   pointCount++;
   massPointSum += p;
   averageNormalSum += n;
@@ -221,6 +240,15 @@ float QefSolver::getError(const glm::fvec3 &p) {
   return qef_calc_error(ATA, p, ATb, btb);
 }
 
+float QefSolver::getError() {
+  return qef_calc_error(ATA, ATb, ATb, btb);
+}
+
+glm::fvec3 QefSolver::getVariance(const glm::fvec3& p) {
+  auto v = qef_calc_co_variance(ATA, p, diag_ATc, diag_ctc);
+  return v * v;
+}
+
 void QefSolver::solve(glm::fvec3 &hermiteP, float &error) {
   if(pointCount > 0) {
     calRoughness();
@@ -229,5 +257,6 @@ void QefSolver::solve(glm::fvec3 &hermiteP, float &error) {
     hermiteP = svd_solve_ATA_ATb(ATA, _ATb);
     hermiteP += massPoint;
     error = qef_calc_error(ATA, hermiteP, ATb, btb);
+    assert(!isnan(error));
   }
 }

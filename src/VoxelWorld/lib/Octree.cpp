@@ -74,6 +74,8 @@ Octree *Octree::buildWithTopology(PositionCode minCode, int depth, Topology *top
     delete root;
     return nullptr;
   }
+  assert(root->grid.allQef.pointCount);
+  assert(!isnan(root->grid.allQef.btb));
   calHermite(root, &root->grid.allQef, topology, &root->grid.vertices[0]);
   return root;
 }
@@ -97,60 +99,6 @@ void Octree::getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefS
   for (int i = 0; i < 8; ++i) {
     getSum(root->children[i], minPos, maxPos, out);
   }
-}
-
-Kdtree *Octree::generateKdtree(Octree *root, PositionCode minCode, PositionCode maxCode, Topology *t, int depth) {
-  if (glm::any(glm::greaterThanEqual(minCode, maxCode))) {
-    return nullptr;
-  }
-  QefSolver sum;
-  getSum(root, minCode, maxCode, sum);
-  if (sum.pointCount == 0) {
-    return nullptr;
-  }
-  PositionCode bestRightMinCode = maxCode, bestLeftMaxCode = minCode;
-  float minErrorDiff = 1e20;
-  QefSolver leftSum, rightSum;
-
-  auto size = maxCode - minCode;
-  int dir = 0;
-  if (size[1] > size[0]) {
-    dir = 1;
-  }
-  if (size[2] > size[dir]) {
-    dir = 2;
-  }
-  for (int axis = minCode[dir] + 1; axis < maxCode[dir]; ++axis) {
-    PositionCode rightMinCode = minCode;
-    rightMinCode[dir] = axis;
-    PositionCode leftMaxCode = maxCode;
-    leftMaxCode[dir] = axis;
-    glm::fvec3 leftApproximate, rightApproximate;
-    leftSum.reset();
-    rightSum.reset();
-    float leftError = 0.f;
-    float rightError = 0.f;
-    getSum(root, minCode, leftMaxCode, leftSum);
-    getSum(root, rightMinCode, maxCode, rightSum);
-    if (leftSum.pointCount > 0) {
-      leftSum.solve(leftApproximate, leftError);
-    }
-    if (rightSum.pointCount > 0) {
-      rightSum.solve(rightApproximate, rightError);
-    }
-    if (abs(rightError - leftError) < minErrorDiff) {
-      minErrorDiff = abs(rightError - leftError);
-      bestLeftMaxCode = leftMaxCode;
-      bestRightMinCode = rightMinCode;
-    }
-  }
-  auto kd = new Kdtree(sum, minCode, maxCode, dir, depth);
-  kd->children[0] = generateKdtree(root, minCode, bestLeftMaxCode, t, depth + 1);
-  kd->children[1] = generateKdtree(root, bestRightMinCode, maxCode, t, depth + 1);
-  kd->grid.assignSign(t);
-  kd->grid.calCornerComponents();
-  kd->calClusterability();
-  return kd;
 }
 
 int Octree::simplify(Octree *root, float threshold, Topology *geometry) {

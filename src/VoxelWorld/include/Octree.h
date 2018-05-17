@@ -26,7 +26,6 @@ class Octree {
 public:
   static Octree *buildWithTopology(PositionCode minCode, int depth, Topology *geometry);
   static void getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefSolver& out);
-  static Kdtree *generateKdtree(Octree *root, PositionCode minCode, PositionCode maxCode, Topology *t, int depth);
   static int simplify(Octree *root, float threshold, Topology *geometry);
 
   static void cubeExtensionTest(Octree *a, Octree *b, int dir, float minSize);

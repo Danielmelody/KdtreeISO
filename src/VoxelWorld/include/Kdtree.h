@@ -13,18 +13,15 @@
 #include "Mesh.h"
 #include "AxisAlignedLine.h"
 
-struct Kdtree {
-#ifdef _DEBUG
-  template class std::array<Kdtree*, 2>
-  template class std::array<Kdtree*, 4>
-#endif
+class Octree;
 
+struct Kdtree {
   typedef std::array<Kdtree *, 2> FaceKd;
   typedef std::array<Kdtree *, 4> EdgeKd;
   RectilinearGrid grid;
   int planeDir;
   int depth;
-  bool clusterability {true};
+  bool clusterable {true};
   Kdtree *children[2]{nullptr, nullptr};
   Kdtree(QefSolver sum,
          PositionCode minCode,
@@ -35,7 +32,7 @@ struct Kdtree {
       grid(minCode, maxCode, sum),
       planeDir(dir),
       depth(depth) {}
-  inline bool isLeaf(float threshold) { return clusterability && (grid.error < threshold || (!children[0] && !children[1])); }
+  inline bool isLeaf(float threshold) { return clusterable && (grid.error < threshold || (!children[0] && !children[1])); }
   inline int axis() {
     assert(!isLeaf(-1));
     if (children[0]) {
@@ -53,9 +50,8 @@ struct Kdtree {
     delete children[0];
     delete children[1];
   }
+  void combineQef();
   void calClusterability();
-  static void drawKdtree(Kdtree *root, Mesh *mesh, float threshold);
-  static Mesh *extractMesh(Kdtree *root, Topology *t, float threshold);
   static void generateVertexIndices(Kdtree *root, Mesh *mesh, Topology *t, float threshold);
   static void contourCell(Kdtree *node, Mesh *mesh, Topology *t, float threshold);
   static void contourFace(FaceKd &nodes,
@@ -71,7 +67,11 @@ struct Kdtree {
                            Topology *t,
                            float threshold,
                            Mesh *mesh);
-  static void generateQuad(EdgeKd &nodes, Mesh *mesh, Topology *t);
+  static void generateQuad(EdgeKd &nodes, int quadDir1, int quadDir2, Mesh *mesh, Topology *t);
+  static int chooseAxisDir(Octree *octree, QefSolver &qef, PositionCode minCode, PositionCode maxCode);
+  static Kdtree *buildFromOctree(Octree *octree, PositionCode minCode, PositionCode maxCode, Topology *t, int depth);
+  static void drawKdtree(Kdtree *root, Mesh *mesh, float threshold);
+  static Mesh *extractMesh(Kdtree *root, Topology *t, float threshold);
 };
 
 

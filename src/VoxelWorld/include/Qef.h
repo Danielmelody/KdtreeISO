@@ -10,7 +10,9 @@
 struct QefSolver {
   glm::mat3x3 ATA;
   glm::fvec3 ATb;
+  glm::fvec3 diag_ATc;
   float btb;
+  glm::fvec3 diag_ctc;
   glm::fvec3 massPointSum;
   glm::fvec3 averageNormalSum;
   float roughness;
@@ -24,10 +26,14 @@ struct QefSolver {
   void solve(glm::fvec3 &hermiteP, float &error);
   void calRoughness();
   float getError(const glm::fvec3& p);
+  float getError();
+  glm::fvec3 getVariance(const glm::fvec3& p);
   QefSolver()
       : ATA(glm::mat4(0.0)),
         ATb(glm::fvec3(0.0)),
+        diag_ATc(0.0),
         btb(0.f),
+        diag_ctc(glm::fvec3(0.f)),
         massPointSum(glm::fvec3(0.f)),
         averageNormalSum(glm::fvec3(0.f)),
         roughness(0.f),
