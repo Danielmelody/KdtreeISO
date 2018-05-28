@@ -20,13 +20,14 @@ struct RectilinearGrid {
   float error{0.f};
   std::vector<QefSolver> components;
   std::vector<Vertex> vertices;
+  std::vector<float> errors;
+  glm::vec3 approximate;
   uint8_t cornerSigns[8]{0};
   int8_t componentIndices[8]{0};
 
   RectilinearGrid(PositionCode minCode, PositionCode maxCode, QefSolver sum = QefSolver())
       : minCode(minCode), maxCode(maxCode), allQef(sum) {
-    vertices.resize(1);
-    allQef.solve(vertices[0].hermiteP, error);
+    allQef.solve(approximate, error);
   }
 
   void solveComponent(int i);

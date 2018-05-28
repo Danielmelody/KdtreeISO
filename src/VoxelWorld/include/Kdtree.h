@@ -21,7 +21,7 @@ struct Kdtree {
   RectilinearGrid grid;
   int planeDir;
   int depth;
-  bool clusterable {true};
+  bool clusterable{true};
   Kdtree *children[2]{nullptr, nullptr};
   Kdtree(QefSolver sum,
          PositionCode minCode,
@@ -32,9 +32,25 @@ struct Kdtree {
       grid(minCode, maxCode, sum),
       planeDir(dir),
       depth(depth) {}
-  inline bool isLeaf(float threshold) { return clusterable && (grid.error < threshold || (!children[0] && !children[1])); }
+  inline bool isContouringLeaf(float threshold) {
+    if (!children[0] && !children[1]) {
+      return true;
+    }
+//    if (grid.error > threshold) {
+//      return false;
+//    }
+    for (auto &error : grid.errors) {
+      if (error > threshold) {
+        return false;
+      }
+    }
+    return clusterable;
+  }
+  inline bool isLeaf() {
+    return !children[0] && !children[1];
+  }
   inline int axis() {
-    assert(!isLeaf(-1));
+    assert(!isLeaf());
     if (children[0]) {
       return children[0]->grid.maxCode[planeDir];
     }
@@ -62,17 +78,16 @@ struct Kdtree {
                           float threshold);
   static void detectQuad(EdgeKd &nodes, AALine line, float threshold);
   static void contourEdge(EdgeKd &nodes,
-                           const AALine &line,
-                           int quadDir1,
-                           Topology *t,
-                           float threshold,
-                           Mesh *mesh);
+                          const AALine &line,
+                          int quadDir1,
+                          Topology *t,
+                          float threshold,
+                          Mesh *mesh);
   static void generateQuad(EdgeKd &nodes, int quadDir1, int quadDir2, Mesh *mesh, Topology *t);
   static int chooseAxisDir(Octree *octree, QefSolver &qef, PositionCode minCode, PositionCode maxCode);
   static Kdtree *buildFromOctree(Octree *octree, PositionCode minCode, PositionCode maxCode, Topology *t, int depth);
   static void drawKdtree(Kdtree *root, Mesh *mesh, float threshold);
   static Mesh *extractMesh(Kdtree *root, Topology *t, float threshold);
 };
-
 
 #endif //VOXELWORLD_KDTREE_H

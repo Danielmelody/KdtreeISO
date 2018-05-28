@@ -2,10 +2,13 @@
 // Created by Danielhu on 2018/1/16.
 //
 #include <iostream>
+#include <sstream>
 #include <unordered_set>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include "svpng.inc"
+#include "cxxopts.hpp"
 #include "Mesh.h"
 #include "Topology.h"
 #include "Octree.h"
@@ -53,6 +56,8 @@ const char *frag =
 static float cameraOffset = 20.f;
 static double previousCursorX = 0.f;
 static double previousCursorY = 0.f;
+constexpr unsigned width = 512;
+constexpr unsigned height = 512;
 static float rotateX = 0.f;
 static float rotateY = 0.f;
 static bool pressing = false;
@@ -104,13 +109,13 @@ void drawMesh(Mesh *mesh,
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.indices);
 
   if (wireframe) {
-    p.setVec3("albedo", fvec3(1, 1, 1));
+    p.setVec3("albedo", fvec3(0, 0, 0));
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
   }
 
   if (shaded) {
-    p.setVec3("albedo", fvec3(1, 0, 0));
+    p.setVec3("albedo", fvec3(1, 0.3, 0));
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size(), GL_UNSIGNED_INT, nullptr);
   }
@@ -120,13 +125,13 @@ void drawMesh(Mesh *mesh,
 }
 
 void setUniforms(Program &program) {
-  mat4 p = glm::perspective(radians(45.f), 4.f / 3.f, 0.1f, 1000.f);
+  mat4 p = glm::perspective(radians(70.f), float(width) / float(height), 0.1f, 1000.f);
   mat4 m = glm::rotate(mat4(), rotateX, fvec3(0, 1, 0));
   m = glm::rotate(m, rotateY, fvec3(1, 0, 0));
   mat4 v = glm::lookAt(fvec3(0, 0, cameraOffset), fvec3(0, 0, -1), fvec3(0, 1, 0));
   program.setMat4("m", m);
   program.setMat4("mvp", p * v * m);
-  program.setVec3("albedo", fvec3(1.0f, 1.0f, 1.0f));
+  program.setVec3("albedo", fvec3(1.f, 1.f, 1.f));
   program.setFloat("specular", 0.f);
   program.setVec3("lightDir", normalize(fvec3(0.f, 0.f, 1.f)));
 }
@@ -159,7 +164,26 @@ void press(GLFWwindow *window, int button, int action, int mods) {
   }
 }
 
-int main() {
+int main(int argc, const char **argv) {
+
+  cxxopts::Options options("K-d Iso", "A k-d tree organized isosurface extractor");
+  options.add_options()
+      ("e,error", "Error threshold", cxxopts::value<float>()->default_value("1e-2"))
+      ("h,hierarchy", "oct/kd", cxxopts::value<std::string>()->default_value("kd"))
+      ("rotateX", "Camera eular angle x", cxxopts::value<float>()->default_value("0"))
+      ("rotateY", "Camera eular angle y", cxxopts::value<float>()->default_value("0"))
+      ("o,output", "output first frame to a file", cxxopts::value<std::string>()->default_value("null"))
+//      ("rx,rotateZ", "Camera eular angle z", cxxopts::value<float>()->default_value("0"))
+      ;
+
+  auto parameters = options.parse(argc, argv);
+  rotateX = parameters["rotateX"].as<float>();
+  rotateY = parameters["rotateY"].as<float>();
+  stringstream errorss;
+  errorss.setf(ios::scientific);
+  errorss << parameters["e"].as<float>();
+  string windowName = parameters["h"].as<std::string>() + " " + errorss.str();
+
   if (!glfwInit()) {
     return -1;
   }
@@ -169,7 +193,7 @@ int main() {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
-  GLFWwindow *window = glfwCreateWindow(640, 480, "Voxel World", nullptr, nullptr);
+  GLFWwindow *window = glfwCreateWindow(width, height, windowName.c_str(), nullptr, nullptr);
   if (!window) {
     glfwTerminate();
     return -1;
@@ -203,12 +227,25 @@ int main() {
       glm::rotate(
           glm::translate(mat4(1.f), fvec3(0, 0, 0)),
           glm::radians(0.f),
-          fvec3(1, 0, 0)
+          fvec3(0, 0, 1)
       ),
-      new Difference(
-          new AABB(fvec3(-4), fvec3(4)),
-          new Cylinder(fvec3(0.f, 0.f, 3.f))
-      )
+//      new Union(
+//          new AABB(fvec3(-4), fvec3(4, 4, 1)),
+//          new AABB(fvec3(-3.5), fvec3(3.5, 3.5, 1.6))
+////          new Sphere(3.2, fvec3(0, 0, 1))
+//      )
+//      new Difference(
+//          new AABB(fvec3(-4), fvec3(4)),
+//          new Union(
+//          new Union(
+//              new Cylinder(fvec3(0.f, 0.f, 3.7f)),
+//              new Transform(glm::rotate(mat4(), glm::radians(90.f), fvec3(1, 0, 0)),
+//                            new Cylinder(fvec3(0.f, 0.f, 3.7f)))
+//          )
+//              new Transform(glm::rotate(mat4(), glm::radians(90.f), fvec3(0, 0, 1)),
+//                            new Cylinder(fvec3(0.f, 0.f, 2.2f)))
+//          )
+//      )
 //  new Difference(
 //      new Union(
 //          new AABB(fvec3(-4, -4, -0.4f), fvec3(4, 4, -0.2f)),
@@ -218,32 +255,43 @@ int main() {
 //  )
 
 //      new Union(
-//          new Torus(5.f, 1.f),
+//          new Torus(5.f, 1.f)
 //          new ExpUnion(
 //              new Sphere(2, fvec3(1.5, 1.5, 0)),
 //              new Sphere(2, fvec3(-1.5, -1.5, 0)),
 //              1
 //          )
 //      )
-//      new Difference(
-//          new AABB(fvec3(-4.f, -2.2f, -4), fvec3(4.f, 2.2f, 4)),
-//          new Cylinder(fvec3(0.f, 0.f, 3.8f))
-//      )
+      new Difference(
+          new AABB(fvec3(-4.1f), fvec3(4.1f)),
+          new Transform(glm::rotate(mat4(), glm::radians(90.f), fvec3(1, 0, 0)),
+                            new Cylinder(fvec3(0.f, 0.f, 3.8f)))
+      )
 //      new Heart(5)
 //      new AABB(fvec3(-5), fvec3(5))
+//      new Union(
+////          new Union(
+//              new AABB(fvec3(-4.6f, -4, -4), fvec3(-3.8, 4, 4)),
+////              new AABB(fvec3(3.8f, -4, -4), fvec3(4.6f, 4, 4))
+////          ),
+//          new Sphere(3.5, fvec3(0, 0, 0))
+//      )
 //  new Union(
 //      new Union(
-//          new AABB(fvec3(-4, -4, -3.5), fvec3(4, 4, -3.2)),
-//          new Sphere(4, fvec3(0, 0, 0))
+//          new AABB(fvec3(-4, -4, -4), fvec3(4, 4, -1)),
+//          new Intersection(
+//              new Cylinder(fvec3(0.f, 0.f, 0.8f)),
+//              new AABB(fvec3(-4), fvec3(4))
+//          )
 //      ),
-//      new AABB(fvec3(-4, -4, 3.2), fvec3(4, 4, 3.5))
+//      new AABB(fvec3(-4, -4, 1), fvec3(4, 4, 4))
 //  )
 //      new Sphere(4.3f)
   );
   int octDepth = 6;
-  RectilinearGrid::setUnitSize(0.55f);
+  RectilinearGrid::setUnitSize(0.3f);
   PositionCode sizeCode = PositionCode(1 << (octDepth - 1));
-  float threshold = 1e-2;
+  float threshold = parameters["e"].as<float>();
 
   auto octree = Octree::buildWithTopology(-sizeCode / 2, octDepth, &g);
   auto *octreeVisual = new Mesh();
@@ -255,10 +303,13 @@ int main() {
 
   int intersectionPreservingVerticesCount = 0;
   bool intersectionFree = false;
-
-//  Octree::simplify(octree, threshold, &g);
-//  Mesh * mesh = Octree::extractMesh(octree, &g, intersectionPreservingVerticesCount, intersectionFree);
-  Mesh *mesh = Kdtree::extractMesh(kdtree, &g, threshold);
+  Mesh *mesh(nullptr);
+  if ((parameters["h"].as<std::string>()) == "kd") {
+    mesh = Kdtree::extractMesh(kdtree, &g, threshold);
+  } else if ((parameters["h"].as<std::string>()) == "oct") {
+    Octree::simplify(octree, threshold, &g);
+    mesh = Octree::extractMesh(octree, &g, intersectionPreservingVerticesCount, intersectionFree);
+  }
 
   cout << "intersectionFree: " << (intersectionFree ? "true" : "false") << endl;
   cout << "triangle count: " << mesh->indices.size() / 3 << endl;
@@ -290,6 +341,22 @@ int main() {
       // drawMesh(octreeVisual, meshBuffers[1], program, false, true);
       // drawMesh(kdtreeVisual, meshBuffers[2], program, false, true);
       glfwSwapBuffers(window);
+      if (!inited) {
+        string outputFile = parameters["o"].as<std::string>();
+        if (outputFile != "null") {
+          unsigned char image[width * height * 3];
+//          unsigned char *p = image;
+//          glPixelStorei(GL_PACK_ALIGNMENT, 0);
+//          glPixelStorei(GL_PACK_ROW_LENGTH, );
+//          glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
+//          glPixelStorei(GL_PACK_SKIP_ROWS, 0);
+          glReadPixels(width / 2, height / 2, width, height, GL_RGB, GL_UNSIGNED_BYTE, image);
+          FILE *fp = fopen(outputFile.c_str(), "wb");
+          svpng(fp, width, height, (unsigned char *) image, 0);
+          fclose(fp);
+          break;
+        }
+      }
       inited = true;
     }
   }

@@ -76,7 +76,7 @@ Octree *Octree::buildWithTopology(PositionCode minCode, int depth, Topology *top
   }
   assert(root->grid.allQef.pointCount);
   assert(!isnan(root->grid.allQef.btb));
-  calHermite(root, &root->grid.allQef, topology, &root->grid.vertices[0]);
+  calHermite(root, &root->grid.allQef, topology, &root->vertex);
   return root;
 }
 
@@ -87,7 +87,8 @@ void Octree::getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefS
   if (glm::any(glm::greaterThanEqual(minPos, maxPos))) {
     return;
   }
-  if (glm::any(glm::greaterThanEqual(minPos, root->grid.maxCode)) || glm::any(glm::lessThanEqual(maxPos, root->grid.minCode))) {
+  if (glm::any(glm::greaterThanEqual(minPos, root->grid.maxCode))
+      || glm::any(glm::lessThanEqual(maxPos, root->grid.minCode))) {
     return;
   }
   minPos = glm::max(root->grid.minCode, minPos);
@@ -160,15 +161,13 @@ void Octree::generateVertexIndices(Octree *node,
     generateVertexIndices(node->children[i], mesh, geometry, indexed);
   }
   if (node->isLeaf) {
-    if (indexed.find(&node->grid.vertices[0]) != indexed.end()) {
+    if (indexed.find(&node->vertex) != indexed.end()) {
       return;
     }
-    for (auto& vertex : node->grid.vertices) {
-      indexed.insert(&vertex);
-      vertex.vertexIndex = static_cast<unsigned int>(mesh->positions.size());
-      mesh->positions.push_back(vertex.hermiteP);
-      mesh->normals.push_back(vertex.hermiteN);
-    }
+    indexed.insert(&node->vertex);
+    node->vertex.vertexIndex = static_cast<unsigned int>(mesh->positions.size());
+    mesh->positions.push_back(node->vertex.hermiteP);
+    mesh->normals.push_back(node->vertex.hermiteN);
   }
 }
 
@@ -335,7 +334,7 @@ bool Octree::findFeatureNodes(Octree *node,
     return false;
   }
 
-  //float parallelrity = glm::dot(normalize(edgeP - node->grid.vertices[0].hermiteP), normal);
+  //float parallelrity = glm::dot(normalize(edgeP - node->vertex.hermiteP), normal);
   // if (node->isLeaf && node->grid.allQef.roughness > 1e-10) {
   results.push_back(node);
   return true;
@@ -423,10 +422,10 @@ void Octree::generateQuad(Octree **nodes,
   std::vector<Vertex *> polygon;
   bool condition1Failed = false;
   for (int i = 0; i < 4; ++i) {
-    if (identifier.find(&nodes[i]->grid.vertices[0]) == identifier.end()) {
-      polygon.push_back(&nodes[i]->grid.vertices[0]);
+    if (identifier.find(&nodes[i]->vertex) == identifier.end()) {
+      polygon.push_back(&nodes[i]->vertex);
     }
-    identifier.insert(&nodes[i]->grid.vertices[0]);
+    identifier.insert(&nodes[i]->vertex);
   }
 
   if (polygon.size() < 3) {
@@ -462,7 +461,7 @@ void Octree::generateQuad(Octree **nodes,
       }
       fvec3 faceMin = glm::max(faceMinA, faceMinB);
       fvec3 faceMax = glm::min(faceMaxA, faceMaxB);
-      if (!segmentFaceIntersection(a->grid.vertices[0].hermiteP, b->grid.vertices[0].hermiteP, faceMin, faceMax, testDir)) {
+      if (!segmentFaceIntersection(a->vertex.hermiteP, b->vertex.hermiteP, faceMin, faceMax, testDir)) {
         fvec3 minEnd = faceMin + directionMap(dir) * (faceMax - faceMin);
         fvec3 maxEnd = faceMax - directionMap(dir) * (faceMax - faceMin);
         glm::fvec3 points[4] = {faceMin, minEnd, faceMax, maxEnd};
@@ -552,7 +551,7 @@ void Octree::generateQuad(Octree **nodes,
       for (int i = 0; i < 4; ++i) {
         int index = (i + firstConcaveFaceVertex) % 4;
         auto faceIter = nodes[index]->faceVertices.find(nodes[(index + 1) % 4]);
-        auto cellVertex = &(nodes[(index + 1) % 4]->grid.vertices[0]);
+        auto cellVertex = &(nodes[(index + 1) % 4]->vertex);
         if (faceIter != nodes[index]->faceVertices.end()) {
           polygon.push_back(faceIter->second);
           concaveFlags.push_back(1);
@@ -575,13 +574,13 @@ void Octree::generateQuad(Octree **nodes,
         Octree *a = nodes[i];
         Octree *b = nodes[(i + 1) % 4];
         if (a != b) {
-          polygon.push_back(&a->grid.vertices[0]);
+          polygon.push_back(&a->vertex);
           auto faceVIter = a->faceVertices.find(b);
           if (faceVIter != a->faceVertices.end()) {
             polygon.push_back(faceVIter->second);
             polygon.push_back(faceVIter->second);
           }
-          polygon.push_back(&b->grid.vertices[0]);
+          polygon.push_back(&b->vertex);
         }
       }
       for (int i = 0; i < polygon.size() / 2; ++i) {
@@ -639,9 +638,9 @@ void Octree::generatePolygons(Octree *nodes[4], int dir, Mesh *mesh, Topology *g
   }
   if (polygons.size() > 2) {
     for (int i = 2; i < polygons.size(); ++i) {
-      mesh->indices.push_back(polygons[0]->grid.vertices[0].vertexIndex);
-      mesh->indices.push_back(polygons[i - 1]->grid.vertices[0].vertexIndex);
-      mesh->indices.push_back(polygons[i]->grid.vertices[0].vertexIndex);
+      mesh->indices.push_back(polygons[0]->vertex.vertexIndex);
+      mesh->indices.push_back(polygons[i - 1]->vertex.vertexIndex);
+      mesh->indices.push_back(polygons[i]->vertex.vertexIndex);
     }
   }
 }

@@ -90,6 +90,7 @@ protected:
   static bool getSelfQef(Octree *node, Topology *geometry, QefSolver &qef);
   static void calHermite(Octree *node, QefSolver *qef, Topology *g, Vertex *vertex);
   RectilinearGrid grid;
+  Vertex vertex;
   Octree *children[8] {nullptr};
   int childIndex;
   bool isLeaf;

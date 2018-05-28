@@ -7,7 +7,7 @@
 
 #define SVD_NUM_SWEEPS 5
 
-const float Tiny_Number = 1.e-4;
+const float Tiny_Number = 1.e-8;
 // const float Tiny_Number_Erroring = 1.e-8;
 
 glm::fvec3 diag_of_mul(const glm::fvec3& v1T, const glm::fvec3 v2) {
@@ -257,6 +257,6 @@ void QefSolver::solve(glm::fvec3 &hermiteP, float &error) {
     hermiteP = svd_solve_ATA_ATb(ATA, _ATb);
     hermiteP += massPoint;
     error = qef_calc_error(ATA, hermiteP, ATb, btb);
-    assert(!isnan(error));
+    assert(!isnan(hermiteP.x));
   }
 }

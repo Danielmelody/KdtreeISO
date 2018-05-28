@@ -18,15 +18,22 @@ float RectilinearGrid::getUnitSize() {
 }
 
 void RectilinearGrid::solveComponent(int i) {
-  float error;
-  components[i].solve(vertices[i].hermiteP, error);
-  auto& p = vertices[i].hermiteP;
-  const auto min = codeToPos(minCode, RectilinearGrid::getUnitSize());
-  const auto max = codeToPos(maxCode, RectilinearGrid::getUnitSize());
+  assert(components[i].pointCount);
+  components[i].solve(vertices[i].hermiteP, errors[i]);
+  auto &p = vertices[i].hermiteP;
+  const auto min = codeToPos(minCode, RectilinearGrid::getUnitSize()) - fvec3(0.01);
+  const auto max = codeToPos(maxCode, RectilinearGrid::getUnitSize()) + fvec3(0.01);
   if (p.x < min.x || p.x > max.x ||
       p.y < min.y || p.y > max.y ||
       p.z < min.z || p.z > max.z) {
-    p = components[i].massPointSum / (float) components[i].pointCount;
+//    vertices[i].hermiteP = components[i].massPointSum / (float) components[i].pointCount;
+//    if (p.x < min.x || p.x > max.x ||
+//        p.y < min.y || p.y > max.y ||
+//        p.z < min.z || p.z > max.z) {
+      p = glm::min(p, max);
+      p = glm::max(p, min);
+//    }
+    errors[i] = components[i].getError(p);
   }
 }
 
@@ -36,9 +43,6 @@ void RectilinearGrid::assignSign(Topology *t) {
   int8_t mtlID = t->getMaterialID();
   for (int i = 0; i < 8; ++i) {
     float val = t->value(min + size * min_offset_subdivision(i));
-    if (minCode[2] == -1) {
-      ;
-    }
     cornerSigns[i] = (uint8_t) (val > 0. ? 0 : mtlID);
   }
 }
@@ -82,6 +86,7 @@ void RectilinearGrid::calCornerComponents() {
   }
   vertices.resize(static_cast<unsigned long>(new_order));
   components.resize(static_cast<unsigned long>(new_order));
+  errors.resize(static_cast<unsigned long>(new_order));
 }
 
 void RectilinearGrid::sampleQef(Topology *t) {
@@ -105,8 +110,7 @@ void RectilinearGrid::sampleQef(Topology *t) {
     }
   }
   for (int i = 0; i < components.size(); ++i) {
-    solveComponent(i);
-    assert(components[i].pointCount);
+    assert(components[i].pointCount > 0 && components[i].pointCount < 12);
     t->normal(vertices[i].hermiteP, vertices[i].hermiteN);
   }
 }
