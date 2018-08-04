@@ -29,7 +29,7 @@ inline const fvec3 &min_offset_subdivision(int i) {
   return offsets[i];
 };
 
-inline const PositionCode &min_offset_subdivision_code(int i) {
+inline const PositionCode &decodeCell(int i) {
   static const PositionCode offsets[8] = {
       PositionCode(0, 0, 0),
       PositionCode(0, 0, 1),
@@ -62,18 +62,12 @@ const int edge_map[12][2] = {
     {0, 1}, {2, 3}, {4, 5}, {6, 7}     // z-axis
 };
 
-const int faceNodeOrder[3][4][4] = {
-    {{0, 0, 1, 1}, {0, 0, 1, 1}, {0, 1, 1, 0}, {0, 1, 1, 0}},
-    {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 1, 1}, {0, 0, 1, 1}},
-    {{0, 0, 1, 1}, {0, 0, 1, 1}, {0, 1, 1, 0}, {0, 1, 1, 0}},
-};
-
 const int cellProcFaceMask[12][3] =
     {{0, 4, 0}, {1, 5, 0}, {2, 6, 0}, {3, 7, 0}, {0, 2, 1}, {4, 6, 1}, {1, 3, 1}, {5, 7, 1}, {0, 1, 2}, {2, 3, 2},
      {4, 5, 2}, {6, 7, 2}};
 
 const int cellProcEdgeMask[6][5] =
-    {{0, 2, 3, 1, 0}, {4, 6, 7, 5, 0}, {0, 1, 5, 4, 1}, {2, 3, 7, 6, 1}, {0, 4, 6, 2, 2}, {1, 5, 7, 3, 2}};
+    {{0, 2, 1, 3, 0}, {4, 6, 5, 7, 0}, {0, 1, 4, 5, 1}, {2, 3, 6, 7, 1}, {0, 4, 2, 6, 2}, {1, 5, 3, 7, 2}};
 
 const int faceProcFaceMask[3][4][3] = {
     {{4, 0, 0}, {5, 1, 0}, {6, 2, 0}, {7, 3, 0}},
@@ -93,10 +87,12 @@ inline const fvec3 &faceSubDivision(int dir, int i) {
   return offsets[dir][i];
 };
 
+const int faceNodeOrder[4] = {0, 0, 1, 1};
+
 const int faceProcEdgeMask[3][4][6] = {
-    {{1, 4, 5, 1, 0, 1}, {1, 6, 7, 3, 2, 1}, {0, 4, 0, 2, 6, 2}, {0, 5, 1, 3, 7, 2}},
-    {{0, 2, 0, 1, 3, 0}, {0, 6, 4, 5, 7, 0}, {1, 2, 6, 4, 0, 2}, {1, 3, 7, 5, 1, 2}},
-    {{1, 1, 3, 2, 0, 0}, {1, 5, 7, 6, 4, 0}, {0, 1, 0, 4, 5, 1}, {0, 3, 2, 6, 7, 1}}
+    {{1, 4, 5, 0, 1, 1}, {1, 6, 7, 2, 3, 1}, {0, 4, 6, 0, 2, 2}, {0, 5, 7, 1, 3, 2}},
+    {{0, 2, 3, 0, 1, 0}, {0, 6, 7, 4, 5, 0}, {1, 2, 6, 0, 4, 2}, {1, 3, 7, 1, 5, 2}},
+    {{1, 1, 3, 0, 2, 0}, {1, 5, 7, 4, 6, 0}, {0, 1, 5, 0, 4, 1}, {0, 3, 7, 2, 6, 1}}
 };
 
 inline const fvec3 &edgeProcDir(int i, int j) {
@@ -110,9 +106,9 @@ inline const fvec3 &edgeProcDir(int i, int j) {
 };
 
 const int edgeProcEdgeMask[3][2][4] = {
-    {{3, 1, 0, 2}, {7, 5, 4, 6}},
-    {{5, 4, 0, 1}, {7, 6, 2, 3}},
-    {{6, 2, 0, 4}, {7, 3, 1, 5}},
+    {{3, 1, 2, 0}, {7, 5, 6, 4}},
+    {{5, 4, 1, 0}, {7, 6, 3, 2}},
+    {{6, 2, 4, 0}, {7, 3, 5, 1}},
 };
 
 const int planeSpreadingDir[3][2][4] = {

@@ -6,19 +6,16 @@
 #define VOXELWORLD_GENERATORS_H
 
 #include <algorithm>
+#include <vector>
 #include <glm/glm.hpp>
+#include "ScalarField.h"
 
-class Topology {
-  uint8_t materialID;
+class Topology : public ScalarField {
 public:
-  virtual float value(const glm::fvec3 &p) = 0;
-  virtual bool solve(const glm::fvec3 &p1, const glm::fvec3 &p2, glm::fvec3 &out);
-  void normal(const glm::fvec3 &p, glm::fvec3 &out);
-  void gradient(const glm::fvec3 &p, glm::fvec3& out);
-  glm::fvec3 gradient(const glm::fvec3 &p);
+  bool solve(const glm::fvec3 &p1, const glm::fvec3 &p2, glm::fvec3 &out) override;
+  virtual float index(const PositionCode &code) override ;
   float laplaceOperator(const glm::fvec3 &p);
-  uint8_t getMaterialID();
-  Topology() : materialID(1) {}
+  float gradientOffset() override { return 0.01f;}
   virtual ~Topology() = default;
 };
 
@@ -31,6 +28,24 @@ public:
   ~Union() override {
     delete l;
     delete r;
+  }
+};
+
+class UnionList : public Topology {
+  std::vector<Topology *> _list;
+public:
+  UnionList(std::vector<Topology*> list) : _list(std::move(list)) {}
+  float value(const glm::fvec3 &p) override {
+    float d = 1e20;
+    for (auto t : _list) {
+      d = std::min(t->value(p), d);
+    }
+    return d;
+  }
+  ~UnionList() override {
+    for (auto p : _list) {
+      delete p;
+    }
   }
 };
 

@@ -7,7 +7,7 @@
 
 #define SVD_NUM_SWEEPS 5
 
-const float Tiny_Number = 1.e-8;
+const float Tiny_Number = 1.e-4;
 // const float Tiny_Number_Erroring = 1.e-8;
 
 glm::fvec3 diag_of_mul(const glm::fvec3& v1T, const glm::fvec3 v2) {
@@ -246,7 +246,7 @@ float QefSolver::getError() {
 
 glm::fvec3 QefSolver::getVariance(const glm::fvec3& p) {
   auto v = qef_calc_co_variance(ATA, p, diag_ATc, diag_ctc);
-  return v * v;
+  return v;
 }
 
 void QefSolver::solve(glm::fvec3 &hermiteP, float &error) {

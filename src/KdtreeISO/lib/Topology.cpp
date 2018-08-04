@@ -3,6 +3,7 @@
 //
 #include <glm/glm.hpp>
 #include <algorithm>
+#include <RectilinearGrid.h>
 #include "Topology.h"
 
 using glm::fvec3;
@@ -15,6 +16,10 @@ using glm::min;
 float gradient_offset = 0.01f;
 float divergence_offset = 0.01f;
 
+float Topology::index(const PositionCode &code) {
+  return value(codeToPos(code, RectilinearGrid::getUnitSize()));
+}
+
 bool Topology::solve(const fvec3 &p1, const fvec3 &p2, fvec3 &out) {
   auto offset = p2 - p1;
   float min = 0.f;
@@ -25,7 +30,7 @@ bool Topology::solve(const fvec3 &p1, const fvec3 &p2, fvec3 &out) {
     float l = value(p1 + offset * min);
     mid = (min + max) / 2.f;
     float midsign = value(p1 + offset * mid);
-    if (l * midsign < 0.) {
+    if ((l >= 0 && midsign < 0) || (l < 0 && midsign >= 0) ) {
       max = mid;
     } else {
       min = mid;
@@ -35,44 +40,11 @@ bool Topology::solve(const fvec3 &p1, const fvec3 &p2, fvec3 &out) {
   return true;
 }
 
-void Topology::normal(const fvec3 &p, fvec3& out) {
-
-  float nx = value(p + fvec3(gradient_offset, 0.f, 0.f)) - value(p - fvec3(gradient_offset, 0.f, 0.f));
-  float ny = value(p + fvec3(0.f, gradient_offset, 0.f)) - value(p - fvec3(0.f, gradient_offset, 0.f));
-  float nz = value(p + fvec3(0.f, 0.f, gradient_offset)) - value(p - fvec3(0.f, 0.f, gradient_offset));
-
-  // auto g = fvec3(nx, ny, nz) / gradient_offset / 2.f;
-  out = fvec3(nx, ny, nz) / gradient_offset / 2.f;
-  assert(!isnan(out.x));
-}
-
-void Topology::gradient(const fvec3 &p, fvec3& out) {
-
-  float nx = value(p + fvec3(gradient_offset, 0.f, 0.f)) - value(p - fvec3(gradient_offset, 0.f, 0.f));
-  float ny = value(p + fvec3(0.f, gradient_offset, 0.f)) - value(p - fvec3(0.f, gradient_offset, 0.f));
-  float nz = value(p + fvec3(0.f, 0.f, gradient_offset)) - value(p - fvec3(0.f, 0.f, gradient_offset));
-
-  out = fvec3(nx, ny, nz) / gradient_offset / 2.f;
-}
-
-fvec3 Topology::gradient(const fvec3 &p) {
-
-  float nx = value(p + fvec3(gradient_offset, 0.f, 0.f)) - value(p - fvec3(gradient_offset, 0.f, 0.f));
-  float ny = value(p + fvec3(0.f, gradient_offset, 0.f)) - value(p - fvec3(0.f, gradient_offset, 0.f));
-  float nz = value(p + fvec3(0.f, 0.f, gradient_offset)) - value(p - fvec3(0.f, 0.f, gradient_offset));
-
-  return fvec3(nx, ny, nz) / gradient_offset / 2.f;
-}
-
 float Topology::laplaceOperator(const fvec3 &p) {
   float lx = gradient(p + fvec3(divergence_offset, 0.f, 0.f)).x - gradient(p - fvec3(divergence_offset, 0.f, 0.f)).x;
   float ly = gradient(p + fvec3(0.f, divergence_offset, 0.f)).y - gradient(p - fvec3(0.f, divergence_offset, 0.f)).y;
   float lz = gradient(p + fvec3(0.f, 0.f, divergence_offset)).z - gradient(p - fvec3(0.f, 0.f, divergence_offset)).z;
   return (lx + ly + lz) / divergence_offset;
-}
-
-uint8_t Topology::getMaterialID() {
-  return materialID;
 }
 
 float Transform::value(const fvec3 &p) {

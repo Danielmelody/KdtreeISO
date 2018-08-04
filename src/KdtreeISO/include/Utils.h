@@ -5,6 +5,7 @@
 #ifndef VOXELWORLD_UTILS_H
 #define VOXELWORLD_UTILS_H
 
+#include "cmath"
 #include <glm/glm.hpp>
 
 using glm::fvec3;
@@ -47,6 +48,14 @@ template <typename C> struct ContainerHasher
 
 inline glm::fvec3 codeToPos(PositionCode code, float cellSize) {
   return fvec3((float) code.x * cellSize, (float) code.y * cellSize, (float) code.z * cellSize);
+}
+
+inline PositionCode posToCode(glm::fvec3 pos, float cellSize) {
+  return PositionCode(std::round(pos.x / cellSize), std::round(pos.y / cellSize), std::round(pos.z / cellSize));
+}
+
+inline PositionCode posToCodeFloor(glm::fvec3 pos, float cellSize) {
+  return PositionCode(pos.x / cellSize, pos.y / cellSize, pos.z / cellSize);
 }
 
 

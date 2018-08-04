@@ -11,11 +11,26 @@ void Mesh::generateFlatNormals() {
   std::vector<glm::fvec3> flat_normals;
   std::vector<unsigned int> flat_indices;
   for (unsigned int i = 0; i < indices.size() / 3; ++i) {
-    glm::fvec3 normal = glm::normalize(
+    glm::fvec3 normal =
         normals[indices[i * 3 + 0]] +
             normals[indices[i * 3 + 1]] +
-            normals[indices[i * 3 + 2]]
-    );
+            normals[indices[i * 3 + 2]];
+
+    glm::vec3 c1 = glm::normalize(positions[indices[i * 3 + 0]] - positions[indices[i * 3 + 1]]);
+    glm::vec3 c2 = glm::normalize(positions[indices[i * 3 + 0]] - positions[indices[i * 3 + 2]]);
+
+    c1 -= glm::dot(c1, c2) * c2;
+    c1 = glm::normalize(c1);
+//    float d = glm::dot(c1, c2);
+    normal -= glm::dot(normal, c1) * c1;
+    normal -= glm::dot(normal, c2) * c2;
+    if (normal == glm::fvec3(0.f)) {
+      continue;
+    }
+
+
+
+    normal = glm::normalize(normal);
     for (unsigned int j = 0; j < 3; ++j) {
       flat_normals.push_back(normal);
       flat_positions.push_back(positions[indices[i * 3 + j]]);
@@ -27,14 +42,14 @@ void Mesh::generateFlatNormals() {
   indices = flat_indices;
 }
 
-void Mesh::addVertex(Vertex *v, Topology *g) {
+void Mesh::addVertex(Vertex *v, ScalarField *g) {
   g->normal(v->hermiteP, v->hermiteN);
   v->vertexIndex = static_cast<unsigned int>(positions.size());
   positions.push_back(v->hermiteP);
   normals.push_back(v->hermiteN);
 }
 
-void Mesh::addTriangle(Vertex **vertices, Topology *g) {
+void Mesh::addTriangle(Vertex **vertices, ScalarField *g) {
   for (int j = 0; j < 3; ++j) {
     auto targetVert = vertices[j];
     Vertex *adjacentVerts[2] = {vertices[(j + 1) % 3], vertices[(j + 2) % 3]};
@@ -52,12 +67,12 @@ void Mesh::addTriangle(Vertex **vertices, Topology *g) {
       indices.push_back(targetVert->vertexIndex);
     }
   }
-  
+
 }
 void Mesh::drawAABBDebug(glm::fvec3 min, glm::fvec3 max) {
   auto offset = max - min;
   for (int i = 0; i < 3; ++i) {
-    for(int j = 0; j < 2; ++j) {
+    for (int j = 0; j < 2; ++j) {
       fvec3 quad[4];
       for (int k = 0; k < 4; ++k) {
         quad[k] = min + offset * min_offset_subdivision(cellProcFaceMask[i * 4 + k][j]);

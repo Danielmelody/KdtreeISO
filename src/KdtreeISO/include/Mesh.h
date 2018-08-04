@@ -14,8 +14,8 @@ struct Mesh {
   std::vector<unsigned int> indices;
   std::vector<glm::fvec3> positions;
   std::vector<glm::fvec3> normals;
-  void addTriangle(Vertex **vertices, Topology *g);
-  void addVertex(Vertex *v, Topology *g);
+  void addTriangle(Vertex **vertices, ScalarField *g);
+  void addVertex(Vertex *v, ScalarField *g);
   void drawAABBDebug(glm::fvec3 min, glm::fvec3 max);
   void generateFlatNormals();
 };

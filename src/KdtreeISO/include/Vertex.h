@@ -8,10 +8,13 @@
 #include <glm/glm.hpp>
 
 struct Vertex {
+  Vertex *parent;
   unsigned int vertexIndex;
+  float error;
   glm::fvec3 hermiteP;
   glm::fvec3 hermiteN;
-  explicit Vertex(glm::fvec3 hermiteP) : vertexIndex(0), hermiteP(hermiteP), hermiteN(glm::fvec3(0)) {}
+  explicit Vertex(glm::fvec3 hermiteP)
+      : parent(nullptr), vertexIndex(0), error(-1.f), hermiteP(hermiteP), hermiteN(glm::fvec3(0)) {}
   Vertex() = default;
 };
 
