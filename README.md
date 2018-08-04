@@ -6,11 +6,13 @@
 
 This repository is the origin implementation of  *Discrete k-d Tree Hierarchy for Isosurface Extraction*. The picture above shows three reconstructed results of stanford dragon using uniform grid, octree and k-d tree under an error threshold of 1e0. 
 
-The triangle counts for those results are shown below
+The triangle counts for those results are shown below. 
 
 | uniform grid | octree | k-d tree |
 | ------------ | ------ | -------- |
-| 309,962      | 35836  | 22608    |
+| 309,962      | 35,836 | 22,608   |
+
+It's a classic test that shows the isosurface extracted from k-d tree obtains almost half the triangles of the one extracted from octree.
 
 Octree-based method is based on works of Schaefer et al. (Manifold dual contouring).
 
@@ -18,17 +20,28 @@ Octree-based method is based on works of Schaefer et al. (Manifold dual contouri
 
 ```bash
 mkdir build
+cd build
 cmake .. && make
-bin/opengl_viewer
+bin/opengl_viewer [options]
 ```
 
 After a few seconds, you should be able to see a CSG defined geometry shaded with color and wireframe. Try drag and scroll mouse to view the extraction result.
 
-![](./imgs/viewer.png)
+![352 Triangles](./imgs/viewer.png)
+
+**Triangle count: 352**
+
+The argument "—strucrture" allows you to compare the extraction result of octree and k-d tree.
+
+```bas
+bin/opengl_viewer -s oct
+```
+
+![2384 Triangles](imgs/viewer-kd.png)
+
+**Triangle count: 2384**
 
 For more CSG result, edit src/examples/main.cpp and recompile the project
-
-
 
 ### License
 
