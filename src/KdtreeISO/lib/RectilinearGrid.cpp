@@ -2,10 +2,13 @@
 // Created by Danielhu on 2018/5/10.
 //
 
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include <set>
 #include <Mesh.h>
 #include <map>
 #include <glm/ext.hpp>
+#include <glm/gtx/intersect.hpp>
 #include "Indicators.h"
 #include "RectilinearGrid.h"
 
@@ -144,14 +147,16 @@ bool RectilinearGrid::isInterFreeCondition2Faild(const std::vector<Vertex *> &po
   bool interSupportingEdge = false;
 
   for (int i = 2; i < polygons.size(); ++i) {
-    fvec3 baryPos;
+    fvec2 baryPos;
+    float distance;
     bool isInter = glm::intersectRayTriangle(p1,
                                              p2 - p1,
                                              polygons[0]->hermiteP,
                                              polygons[i - 1]->hermiteP,
                                              polygons[i]->hermiteP,
-                                             baryPos);
-    isInter = isInter && (baryPos.z > 0.f && baryPos.z < 1.f);
+                                             baryPos,
+                                             distance);
+    isInter = isInter && (distance > 0.f && distance < 1.f);
     if (isInter) {
       interSupportingEdge = true;
       anotherV = i % 3 + 1;
@@ -160,14 +165,16 @@ bool RectilinearGrid::isInterFreeCondition2Faild(const std::vector<Vertex *> &po
   if (polygons.size() == 3) {
     return !interSupportingEdge;
   } else {
-    fvec3 baryPos;
+    fvec2 baryPos;
+    float distance;
     bool interTetrahedron = glm::intersectRayTriangle(polygons[0]->hermiteP,
                                                       polygons[2]->hermiteP - polygons[0]->hermiteP,
                                                       p1,
                                                       p2,
                                                       polygons[anotherV]->hermiteP,
-                                                      baryPos);
-    interTetrahedron = interTetrahedron && (baryPos.z > 0.f && baryPos.z < 1.f);
+                                                      baryPos,
+                                                      distance);
+    interTetrahedron = interTetrahedron && (distance > 0.f && distance < 1.f);
     return !(interTetrahedron && interSupportingEdge);
   }
 }

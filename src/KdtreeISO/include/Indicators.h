@@ -8,6 +8,7 @@
 #include "Utils.h"
 
 using glm::fvec3;
+using glm::fvec2;
 using glm::ivec3;
 
 inline int encodeCell(ivec3 code) {

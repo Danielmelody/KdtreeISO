@@ -1,6 +1,9 @@
 //
 // Created by Danielhu on 2018/1/20.
 //
+
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include <unordered_map>
 #include <unordered_set>
 #include <numeric>

@@ -10,7 +10,7 @@
 
 using glm::fvec3;
 
-typedef glm::tvec3<int> PositionCode;
+using PositionCode = glm::tvec3<int>;
 
 inline bool segmentFaceIntersection(const fvec3 &va, const fvec3 &vb, const fvec3 &min, const fvec3& max, int dir) {
   float l = (vb - va)[dir];
