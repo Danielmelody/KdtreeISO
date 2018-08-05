@@ -3,6 +3,7 @@
 //
 
 #define GLM_ENABLE_EXPERIMENTAL
+#define GLM_FORCE_CTOR_INIT
 
 #include <unordered_map>
 #include <unordered_set>

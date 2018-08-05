@@ -1,3 +1,5 @@
+#define GLM_FORCE_CTOR_INIT
+
 #include "program.h"
 #include <fstream>
 #include <sstream>

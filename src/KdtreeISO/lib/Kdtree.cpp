@@ -2,6 +2,7 @@
 // Created by Danielhu on 2018/4/22.
 //
 
+#define GLM_FORCE_CTOR_INIT
 
 #include <set>
 #include <map>

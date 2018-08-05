@@ -2,6 +2,8 @@
 // Created by Danielhu on 2018/1/16.
 //
 
+#define GLM_FORCE_CTOR_INIT
+
 #include <glm/glm.hpp>
 #include "Qef.h"
 

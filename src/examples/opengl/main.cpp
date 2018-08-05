@@ -1,6 +1,9 @@
 //
 // Created by Danielhu on 2018/1/16.
 //
+
+#define GLM_FORCE_CTOR_INIT
+
 #include <iostream>
 #include <sstream>
 #include <cmath>
