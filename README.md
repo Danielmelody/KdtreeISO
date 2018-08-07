@@ -12,9 +12,15 @@ The triangle counts for those results are shown below.
 | ------------ | ------ | -------- |
 | 309,962      | 35,836 | 22,608   |
 
-It's a classic test that shows the isosurface extracted from k-d tree obtains almost half the triangles of the one extracted from octree.
+It's a classical test that shows the isosurface extracted from k-d tree obtains almost half the triangles of the one extracted from octree.
 
 Octree-based method is based on works of Schaefer et al. (Manifold dual contouring).
+
+### Project Dependency
+
+* glm 0.9.9
+* glew 2.1.0
+* glfw 3.2.1
 
 ### Build and run OpenGL viewer
 
