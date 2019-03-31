@@ -29,12 +29,12 @@ void RectilinearGrid::solveComponent(int i) {
 void RectilinearGrid::solve(QefSolver &qef, Vertex &v) {
   auto &p = v.hermiteP;
   qef.solve(p, v.error);
-  const auto min = codeToPos(minCode, RectilinearGrid::getUnitSize()) ;//- RectilinearGrid::getUnitSize() * 0.1f;
-  const auto max = codeToPos(maxCode, RectilinearGrid::getUnitSize()) ;//+ RectilinearGrid::getUnitSize() * 0.1f;
+  const auto min = codeToPos(minCode, RectilinearGrid::getUnitSize()); //- RectilinearGrid::getUnitSize() * 0.1f;
+  const auto max = codeToPos(maxCode, RectilinearGrid::getUnitSize()); //+ RectilinearGrid::getUnitSize() * 0.1f;
   if (p.x < min.x || p.x > max.x ||
       p.y < min.y || p.y > max.y ||
       p.z < min.z || p.z > max.z) {
-    p = qef.massPointSum / (float) qef.pointCount;
+    p = qef.massPointSum / (float)qef.pointCount;
   }
 }
 
@@ -44,7 +44,7 @@ void RectilinearGrid::assignSign(ScalarField *t) {
   for (int i = 0; i < 8; ++i) {
     PositionCode code = decodeCell(i);
     float val = t->index(minCode + sizeCode * code);
-    cornerSigns[i] = (uint8_t) (val >= 0. ? 0 : mtlID);
+    cornerSigns[i] = (uint8_t)(val >= 0. ? 0 : mtlID);
   }
 }
 
@@ -60,8 +60,7 @@ void RectilinearGrid::calCornerComponents() {
   for (int i = 0; i < 12; ++i) {
     int c1 = cellProcFaceMask[i][0];
     int c2 = cellProcFaceMask[i][1];
-    if (cornerSigns[c1] == cornerSigns[c2]
-        && cornerSigns[c2] != 0) {
+    if (cornerSigns[c1] == cornerSigns[c2] && cornerSigns[c2] != 0) {
       int co1 = componentIndices[c1];
       int co2 = componentIndices[c2];
       auto &c2Components = clusters[co2];
@@ -165,7 +164,8 @@ bool RectilinearGrid::isInterFreeCondition2Faild(const std::vector<Vertex *> &po
   }
   if (polygons.size() == 3) {
     return !interSupportingEdge;
-  } else {
+  }
+  else {
     fvec2 baryPos;
     float distance;
     bool interTetrahedron = glm::intersectRayTriangle(polygons[0]->hermiteP,
@@ -206,7 +206,7 @@ bool RectilinearGrid::calClusterability(RectilinearGrid *left,
     return true;
   }
 
-  RectilinearGrid* params[2] = {left, right};
+  RectilinearGrid *params[2] = {left, right};
 
   for (int i = 0; i < 4; ++i) {
     int edgeMinIndex = cellProcFaceMask[dir * 4 + i][0];
@@ -232,7 +232,7 @@ void RectilinearGrid::combineAAGrid(RectilinearGrid *left,
     return;
   }
   std::map<int, int> combineMaps[2];
-  RectilinearGrid* grids[2] = {left, right};
+  RectilinearGrid *grids[2] = {left, right};
   for (int i = 0; i < 4; ++i) {
     int c = -1;
     for (int j = 0; j < 2; ++j) {

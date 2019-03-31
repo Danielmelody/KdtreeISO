@@ -2,10 +2,10 @@
 // Created by Danielhu on 2018/5/29.
 //
 
-#include <glm/gtc/type_precision.hpp>
 #include "VolumeData.h"
-#include "RectilinearGrid.h"
 #include "Indicators.h"
+#include "RectilinearGrid.h"
+#include <glm/gtc/type_precision.hpp>
 
 void VolumeData::readTIFF() {
   data = static_cast<uint8_t *>(_TIFFmalloc(width * height * levels));
@@ -28,7 +28,7 @@ float VolumeData::index(const PositionCode &code) {
   if (offset >= width * height * levels || offset < 0) {
     return ISO_VAL;
   }
-  uint8_t* ptr = data + offset;
+  uint8_t *ptr = data + offset;
   return ISO_VAL - (*ptr);
 }
 
@@ -37,7 +37,7 @@ float VolumeData::value(const glm::fvec3 &p) {
   return index(posToCode(p, l));
   PositionCode samples[8];
   float values[8];
-  for (int i  = 0; i < 8; ++i) {
+  for (int i = 0; i < 8; ++i) {
     samples[i] = posToCodeFloor(p + l * min_offset_subdivision(i), l);
     values[i] = index(samples[i]);
   }
@@ -53,14 +53,15 @@ float VolumeData::value(const glm::fvec3 &p) {
   return c;
 }
 
-bool VolumeData::solve(const glm::fvec3 &p1, const glm::fvec3 &p2, glm::fvec3 &out) {
+bool VolumeData::solve(const glm::fvec3 &p1, const glm::fvec3 &p2,
+                       glm::fvec3 &out) {
   float v1 = value(p1);
   float v2 = value(p2);
   if (v2 - v1 == 0.f) {
     out = (p1 + p2) / 2.f;
-  } else {
+  }
+  else {
     out = p1 - (p2 - p1) * v1 / (v2 - v1);
   }
   return true;
 }
-

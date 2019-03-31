@@ -8,7 +8,7 @@
 // ----------------------------------------------------------------------------
 
 Program::Program()
-    : id(0) {
+  : id(0) {
 }
 
 // ----------------------------------------------------------------------------
@@ -21,7 +21,7 @@ Program::~Program() {
 
 // ----------------------------------------------------------------------------
 
-bool Program::init(const char *vert, const char* frag) {
+bool Program::init(const char *vert, const char *frag) {
   id = glCreateProgram();
   return compile(GL_VERTEX_SHADER, vert) && compile(GL_FRAGMENT_SHADER, frag) && link();
 }
@@ -105,7 +105,7 @@ bool Program::link() {
   return true;
 }
 
-const GLint Program::getUniformLocation(const char* name) {
+const GLint Program::getUniformLocation(const char *name) {
   if (locations.find(name) == locations.end()) {
     const GLint location = glGetUniformLocation(id, name);
     locations.insert({std::string(name), (int)location});
@@ -143,4 +143,3 @@ bool Program::setFloat(const char *name, float uniform) {
   glUniform1f(location, uniform);
   return true;
 }
-

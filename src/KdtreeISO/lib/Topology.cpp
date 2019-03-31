@@ -6,12 +6,11 @@
 #include <RectilinearGrid.h>
 #include "Topology.h"
 
+using glm::dot;
 using glm::fvec3;
 using glm::fvec4;
-using glm::dot;
 using glm::max;
 using glm::min;
-
 
 float gradient_offset = 0.01f;
 float divergence_offset = 0.01f;
@@ -30,9 +29,10 @@ bool Topology::solve(const fvec3 &p1, const fvec3 &p2, fvec3 &out) {
     float l = value(p1 + offset * min);
     mid = (min + max) / 2.f;
     float midsign = value(p1 + offset * mid);
-    if ((l >= 0 && midsign < 0) || (l < 0 && midsign >= 0) ) {
+    if ((l >= 0 && midsign < 0) || (l < 0 && midsign >= 0)) {
       max = mid;
-    } else {
+    }
+    else {
       min = mid;
     }
   }
@@ -55,7 +55,7 @@ float Sphere::value(const fvec3 &p) {
   return glm::length(p - center) - radius;
 }
 
-bool Sphere::solve(const fvec3 &p1, const fvec3 &p2, fvec3 &out){
+bool Sphere::solve(const fvec3 &p1, const fvec3 &p2, fvec3 &out) {
   fvec3 p1p2 = p1 - p2;
   float a = dot(p1p2, p1p2);
   float b = 2 * dot(p2 - center, p1 - p2);
@@ -72,7 +72,7 @@ bool Sphere::solve(const fvec3 &p1, const fvec3 &p2, fvec3 &out){
     out = t1 * p1p2 + p2;
     return true;
   }
-  if(t2 >= 0.f && t2 <= 1.f) {
+  if (t2 >= 0.f && t2 <= 1.f) {
     out = t2 * p1p2 + p2;
     return true;
   }

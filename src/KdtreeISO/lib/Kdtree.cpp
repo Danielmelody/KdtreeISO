@@ -19,9 +19,9 @@ using glm::min;
 
 void Kdtree::calClusterability(ScalarField *t) {
   bool selfClusterable = RectilinearGrid::calClusterability(
-      children[0] ? &children[0]->grid : nullptr,
-      children[1] ? &children[1]->grid : nullptr,
-      planeDir, grid.minCode, grid.maxCode, t);
+    children[0] ? &children[0]->grid : nullptr,
+    children[1] ? &children[1]->grid : nullptr,
+    planeDir, grid.minCode, grid.maxCode, t);
   if (!selfClusterable) {
     clusterable = false;
     return;
@@ -72,7 +72,8 @@ Kdtree *Kdtree::buildFromOctree(Octree *octree, PositionCode minCode, PositionCo
       bestRightMinCode = minCode;
       bestLeftMaxCode[dir] = bestRightMinCode[dir] = plane;
     }
-  } else {
+  }
+  else {
     QefSolver leftSum, rightSum;
     float minError = 1e20;
     while (maxAxis - minAxis > 1) {
@@ -97,9 +98,11 @@ Kdtree *Kdtree::buildFromOctree(Octree *octree, PositionCode minCode, PositionCo
       }
       if (leftError > rightError) {
         maxAxis = mid;
-      } else if (leftError < rightError) {
+      }
+      else if (leftError < rightError) {
         minAxis = mid;
-      } else {
+      }
+      else {
         break;
       }
     }
@@ -110,7 +113,8 @@ Kdtree *Kdtree::buildFromOctree(Octree *octree, PositionCode minCode, PositionCo
   if (kd->isLeaf()) {
     kd->grid.assignSign(t);
     kd->grid.sampleQef(t, false);
-  } else {
+  }
+  else {
     kd->grid.assignSign(t);
     kd->calClusterability(t);
     kd->combineQef();
@@ -141,7 +145,8 @@ int Kdtree::chooseAxisDir(Octree *octree, QefSolver &qef, PositionCode minCode, 
       minDir = 2;
     }
     dir = maxDir;
-  } else {
+  }
+  else {
     // variance approach
     glm::fvec3 approximate;
     float error;
@@ -192,11 +197,11 @@ void Kdtree::generateVertexIndices(Kdtree *root, Mesh *mesh, ScalarField *t, flo
   if (!root) {
     return;
   }
-//  mesh->addVertex(&root->grid.approximate, t);
+  //  mesh->addVertex(&root->grid.approximate, t);
   for (int i = 0; i < root->grid.vertices.size(); ++i) {
     auto &v = root->grid.vertices[i];
     mesh->addVertex(&v, t);
-//    v.hermiteN = glm::normalize(root->grid.components[i].averageNormalSum);
+    //    v.hermiteN = glm::normalize(root->grid.components[i].averageNormalSum);
   }
   generateVertexIndices(root->children[0], mesh, t, threshold);
   generateVertexIndices(root->children[1], mesh, t, threshold);
@@ -294,18 +299,17 @@ int nextQuadIndex(int dir1, int dir2, int planeDir, int i) {
 void Kdtree::detectQuad(EdgeKd &nodes, AALine line, float threshold) {
   for (int i = 0; i < 2; ++i) {
     while (
-        nodes[i * 2] && nodes[i * 2 + 1]
-            && !nodes[i * 2]->isContouringLeaf(threshold)
-            && nodes[2 * i] == nodes[2 * i + 1]
-            && nodes[i * 2]->planeDir != line.dir) {
+      nodes[i * 2] && nodes[i * 2 + 1] && !nodes[i * 2]->isContouringLeaf(threshold) && nodes[2 * i] == nodes[2 * i + 1] && nodes[i * 2]->planeDir != line.dir) {
       auto commonNode = nodes[i * 2];
       if (nodes[i * 2]->axis() == line.point[nodes[i * 2]->planeDir]) {
         nodes[i * 2] = commonNode->children[0];
         nodes[i * 2 + 1] = commonNode->children[1];
-      } else if (nodes[i * 2]->axis() > line.point[nodes[i * 2]->planeDir]) {
+      }
+      else if (nodes[i * 2]->axis() > line.point[nodes[i * 2]->planeDir]) {
         nodes[i * 2] = commonNode->children[0];
         nodes[i * 2 + 1] = commonNode->children[0];
-      } else {
+      }
+      else {
         nodes[i * 2] = commonNode->children[1];
         nodes[i * 2 + 1] = commonNode->children[1];
       }
@@ -350,21 +354,19 @@ void Kdtree::contourEdge(EdgeKd &nodes,
       }
     }
   }
-//  assert(nodes[0]->grid.minCode[quadDir1] <= nodes[1]->grid.minCode[quadDir1]);
-//  assert(nodes[2]->grid.minCode[quadDir1] <= nodes[3]->grid.minCode[quadDir1]);
-//  assert(nodes[0]->grid.minCode[quadDir2] <= nodes[2]->grid.minCode[quadDir2]);
-//  assert(nodes[1]->grid.minCode[quadDir2] <= nodes[3]->grid.minCode[quadDir2]);
+  //  assert(nodes[0]->grid.minCode[quadDir1] <= nodes[1]->grid.minCode[quadDir1]);
+  //  assert(nodes[2]->grid.minCode[quadDir1] <= nodes[3]->grid.minCode[quadDir1]);
+  //  assert(nodes[0]->grid.minCode[quadDir2] <= nodes[2]->grid.minCode[quadDir2]);
+  //  assert(nodes[1]->grid.minCode[quadDir2] <= nodes[3]->grid.minCode[quadDir2]);
 
-//  if ((maxEndCode - minEndCode)[0] == 1) {
-//    mesh->drawAABBDebug(codeToPos(minEndCode, RectilinearGrid::getUnitSize()), codeToPos(maxEndCode, RectilinearGrid::getUnitSize()));
-//  }
+  //  if ((maxEndCode - minEndCode)[0] == 1) {
+  //    mesh->drawAABBDebug(codeToPos(minEndCode, RectilinearGrid::getUnitSize()), codeToPos(maxEndCode, RectilinearGrid::getUnitSize()));
+  //  }
 
-  if (nodes[0]->isContouringLeaf(threshold) && nodes[1]->isContouringLeaf(threshold)
-      && nodes[2]->isContouringLeaf(threshold)
-      && nodes[3]->isContouringLeaf(threshold)) {
+  if (nodes[0]->isContouringLeaf(threshold) && nodes[1]->isContouringLeaf(threshold) && nodes[2]->isContouringLeaf(threshold) && nodes[3]->isContouringLeaf(threshold)) {
     // only for debug
     if ((t->value(minEnd) >= 0 && t->value(maxEnd) >= 0) || (t->value(minEnd) < 0 && t->value(maxEnd) < 0)) {
-//      return;
+      //      return;
     }
     generateQuad(nodes, quadDir1, quadDir2, mesh, t, threshold);
     return;
@@ -388,24 +390,24 @@ void Kdtree::generateQuad(EdgeKd &nodes,
                           Mesh *mesh,
                           ScalarField *t,
                           float threshold) {
-//  for (auto n : nodes) {
-//    n->grid.vertices[0].hermiteP = codeToPos(n->grid.minCode + n->grid.maxCode, RectilinearGrid::getUnitSize()) / 2.f;
-//    // mesh->drawAABBDebug(codeToPos(n->grid.minCode, RectilinearGrid::getUnitSize()), codeToPos(n->grid.maxCode, RectilinearGrid::getUnitSize()));
-//  }
+  //  for (auto n : nodes) {
+  //    n->grid.vertices[0].hermiteP = codeToPos(n->grid.minCode + n->grid.maxCode, RectilinearGrid::getUnitSize()) / 2.f;
+  //    // mesh->drawAABBDebug(codeToPos(n->grid.minCode, RectilinearGrid::getUnitSize()), codeToPos(n->grid.maxCode, RectilinearGrid::getUnitSize()));
+  //  }
 
   // return;
 
-//  assert(glm::all(glm::greaterThanEqual(nodes[1]->grid.minCode, nodes[0]->grid.minCode)));
-//  assert(glm::all(glm::greaterThanEqual(nodes[3]->grid.minCode, nodes[2]->grid.minCode)));
-//  assert(glm::all(glm::greaterThanEqual(nodes[3]->grid.minCode, nodes[0]->grid.minCode)));
-//  assert(glm::all(glm::greaterThanEqual(nodes[3]->grid.minCode, nodes[1]->grid.minCode)));
+  //  assert(glm::all(glm::greaterThanEqual(nodes[1]->grid.minCode, nodes[0]->grid.minCode)));
+  //  assert(glm::all(glm::greaterThanEqual(nodes[3]->grid.minCode, nodes[2]->grid.minCode)));
+  //  assert(glm::all(glm::greaterThanEqual(nodes[3]->grid.minCode, nodes[0]->grid.minCode)));
+  //  assert(glm::all(glm::greaterThanEqual(nodes[3]->grid.minCode, nodes[1]->grid.minCode)));
 
-//  for (auto &n : nodes) {
-//    assert(n->clusterable);
-//    for (auto c : n->grid.vertices) {
-//      assert(c.vertexIndex);
-//    }
-//  }
+  //  for (auto &n : nodes) {
+  //    assert(n->clusterable);
+  //    for (auto c : n->grid.vertices) {
+  //      assert(c.vertexIndex);
+  //    }
+  //  }
 
   RectilinearGrid::generateQuad(nodes, quadDir1, quadDir2, mesh, t, threshold);
 }

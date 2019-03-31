@@ -14,7 +14,7 @@ struct Vertex {
   glm::fvec3 hermiteP;
   glm::fvec3 hermiteN;
   explicit Vertex(glm::fvec3 hermiteP)
-      : parent(nullptr), vertexIndex(0), error(-1.f), hermiteP(hermiteP), hermiteN(glm::fvec3(0)) {}
+    : parent(nullptr), vertexIndex(0), error(-1.f), hermiteP(hermiteP), hermiteN(glm::fvec3(0)) {}
   Vertex() = default;
 };
 

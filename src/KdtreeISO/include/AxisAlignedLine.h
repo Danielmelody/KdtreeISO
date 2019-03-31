@@ -12,8 +12,7 @@ struct AALine {
   PositionCode point;
   int dir;
   bool operator==(const AALine &other) {
-    return point[(dir + 1) % 3] == other.point[(dir + 1) % 3]
-        && point[(dir + 2) % 3] == other.point[(dir + 2) % 3];
+    return point[(dir + 1) % 3] == other.point[(dir + 1) % 3] && point[(dir + 2) % 3] == other.point[(dir + 2) % 3];
   }
   AALine(PositionCode axes, int dotPlane) : point(axes), dir(dotPlane) {}
   AALine() = default;

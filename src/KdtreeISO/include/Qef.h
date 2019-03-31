@@ -25,19 +25,19 @@ struct QefSolver {
   void add(const glm::fvec3 &p, const glm::fvec3 &n);
   void solve(glm::fvec3 &hermiteP, float &error);
   void calRoughness();
-  float getError(const glm::fvec3& p);
+  float getError(const glm::fvec3 &p);
   float getError();
-  glm::fvec3 getVariance(const glm::fvec3& p);
+  glm::fvec3 getVariance(const glm::fvec3 &p);
   QefSolver()
-      : ATA(glm::mat4(0.0)),
-        ATb(glm::fvec3(0.0)),
-        diag_ATc(0.0),
-        btb(0.f),
-        diag_ctc(glm::fvec3(0.f)),
-        massPointSum(glm::fvec3(0.f)),
-        averageNormalSum(glm::fvec3(0.f)),
-        roughness(0.f),
-        pointCount(0) {}
+    : ATA(glm::mat4(0.0)),
+      ATb(glm::fvec3(0.0)),
+      diag_ATc(0.0),
+      btb(0.f),
+      diag_ctc(glm::fvec3(0.f)),
+      massPointSum(glm::fvec3(0.f)),
+      averageNormalSum(glm::fvec3(0.f)),
+      roughness(0.f),
+      pointCount(0) {}
 };
 
 #endif //VOXELWORLD_QEF_H

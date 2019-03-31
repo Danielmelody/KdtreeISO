@@ -28,17 +28,16 @@ struct Kdtree {
          PositionCode maxCode,
          int dir,
          int depth)
-      :
-      grid(minCode, maxCode, sum),
+    : grid(minCode, maxCode, sum),
       planeDir(dir),
       depth(depth) {}
   inline bool isContouringLeaf(float threshold) {
     if (!children[0] && !children[1]) {
       return true;
     }
-//    if (grid.error > threshold) {
-//      return false;
-//    }
+    //    if (grid.error > threshold) {
+    //      return false;
+    //    }
     for (auto &v : grid.vertices) {
       if (v.error > threshold) {
         return false;

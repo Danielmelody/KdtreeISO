@@ -12,29 +12,27 @@
 const float Tiny_Number = 1.e-4;
 // const float Tiny_Number_Erroring = 1.e-8;
 
-glm::fvec3 diag_of_mul(const glm::fvec3& v1T, const glm::fvec3 v2) {
+glm::fvec3 diag_of_mul(const glm::fvec3 &v1T, const glm::fvec3 v2) {
   return v1T * v2;
 }
 
-glm::fvec3 diag(const glm::mat3& m) {
+glm::fvec3 diag(const glm::mat3 &m) {
   return glm::fvec3(m[0][0], m[1][1], m[2][2]);
 }
 
 glm::fvec3 svd_vmul_sym(const glm::mat3x3 &a, const glm::fvec3 &v) {
   return glm::fvec3(
-      (a[0][0] * v.x) + (a[0][1] * v.y) + (a[0][2] * v.z),
-      (a[0][1] * v.x) + (a[1][1] * v.y) + (a[1][2] * v.z),
-      (a[0][2] * v.x) + (a[1][2] * v.y) + (a[2][2] * v.z)
-  );
+    (a[0][0] * v.x) + (a[0][1] * v.y) + (a[0][2] * v.z),
+    (a[0][1] * v.x) + (a[1][1] * v.y) + (a[1][2] * v.z),
+    (a[0][2] * v.x) + (a[1][2] * v.y) + (a[2][2] * v.z));
 }
 
-float qef_calc_error(const glm::mat3x3& ATA, const glm::fvec3& x, const glm::fvec3& ATb, const float btb) {
+float qef_calc_error(const glm::mat3x3 &ATA, const glm::fvec3 &x, const glm::fvec3 &ATb, const float btb) {
   glm::fvec3 atax = svd_vmul_sym(ATA, x);
   return glm::dot(x, atax) - 2 * glm::dot(x, ATb) + btb;
 }
 
-
-glm::fvec3 qef_calc_co_variance(const glm::mat3x3& ATA, const glm::fvec3& x, const glm::fvec3& diag_ATc, const glm::fvec3& diag_ctc) {
+glm::fvec3 qef_calc_co_variance(const glm::mat3x3 &ATA, const glm::fvec3 &x, const glm::fvec3 &diag_ATc, const glm::fvec3 &diag_ctc) {
   return x * diag(ATA) * x - 2.f * (x * diag_ATc) + diag_ctc;
 }
 
@@ -246,15 +244,15 @@ float QefSolver::getError() {
   return qef_calc_error(ATA, ATb, ATb, btb);
 }
 
-glm::fvec3 QefSolver::getVariance(const glm::fvec3& p) {
+glm::fvec3 QefSolver::getVariance(const glm::fvec3 &p) {
   auto v = qef_calc_co_variance(ATA, p, diag_ATc, diag_ctc);
   return v;
 }
 
 void QefSolver::solve(glm::fvec3 &hermiteP, float &error) {
-  if(pointCount > 0) {
+  if (pointCount > 0) {
     calRoughness();
-    glm::fvec3 massPoint = massPointSum / (float) pointCount;
+    glm::fvec3 massPoint = massPointSum / (float)pointCount;
     glm::fvec3 _ATb = ATb - svd_vmul_sym(ATA, massPoint);
     hermiteP = svd_solve_ATA_ATb(ATA, _ATb);
     hermiteP += massPoint;

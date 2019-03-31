@@ -20,15 +20,14 @@
 #include "Mesh.h"
 #include "Kdtree.h"
 
-
 typedef std::unordered_set<std::set<Vertex *>, ContainerHasher<std::set<Vertex *>>> EdgePolygonSet;
 
 struct Octree {
-public:
+  public:
   static Octree *buildWithScalarField(PositionCode minCode, int depth, ScalarField *scalarField, bool as_mipmap);
-  static void getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefSolver& out);
+  static void getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefSolver &out);
   static void simplify(Octree *root, float threshold);
-  static void calClusterbility(Octree* root, ScalarField* s);
+  static void calClusterbility(Octree *root, ScalarField *s);
 
   static Mesh *extractMesh(Octree *root,
                            ScalarField *geometry,
@@ -36,53 +35,54 @@ public:
                            bool intersectionFree = true);
   static void drawOctrees(Octree *root, Mesh *mesh);
   void combineComponents(ScalarField *s);
-  Octree(PositionCode minCode, PositionCode maxCode, int depth) :
-      grid(minCode, maxCode),
-      childIndex(-1),
-      isLeaf(false),
-      depth(depth) {};
+  Octree(PositionCode minCode, PositionCode maxCode, int depth) : grid(minCode, maxCode),
+                                                                  childIndex(-1),
+                                                                  isLeaf(false),
+                                                                  depth(depth){};
   ~Octree() = default;
-protected:
+
+  protected:
   static void contourCell(Octree *root,
-                           Mesh *mesh,
-                           ScalarField *geometry,
-                           int &intersectionPreservingVerticesCount,
-                           EdgePolygonSet &edgePolygonSet,
-                           bool intersectionFree,
-                           float threshold);
+                          Mesh *mesh,
+                          ScalarField *geometry,
+                          int &intersectionPreservingVerticesCount,
+                          EdgePolygonSet &edgePolygonSet,
+                          bool intersectionFree,
+                          float threshold);
   static void contourFace(Octree *nodes[2],
-                           int dir,
-                           Mesh *mesh,
-                           ScalarField *geometry,
-                           int &intersectionPreservingVerticesCount,
-                           EdgePolygonSet &edgePolygonSet,
-                           bool intersectionFree,
-                           float threshold);
+                          int dir,
+                          Mesh *mesh,
+                          ScalarField *geometry,
+                          int &intersectionPreservingVerticesCount,
+                          EdgePolygonSet &edgePolygonSet,
+                          bool intersectionFree,
+                          float threshold);
   static void contourEdge(Octree **nodes,
-                           int dir,
-                           int quadDir2,
-                           ScalarField *geometry,
-                           int &intersectionPreservingVerticesCount,
-                           EdgePolygonSet &edgePolygonSet,
-                           bool intersectionFree,
-                           Mesh *mesh,
-                           float threshold);
+                          int dir,
+                          int quadDir2,
+                          ScalarField *geometry,
+                          int &intersectionPreservingVerticesCount,
+                          EdgePolygonSet &edgePolygonSet,
+                          bool intersectionFree,
+                          Mesh *mesh,
+                          float threshold);
   static void generateVertexIndices(Octree *node,
                                     Mesh *mesh,
                                     ScalarField *geometry,
                                     std::unordered_set<Vertex *> &indexed);
   static void generateQuad(Octree **nodes,
-                            int dir,
-                            int quadDir2,
-                            ScalarField *g,
-                            int &intersectionPreservingVerticesCount,
-                            EdgePolygonSet &edgePolygonSet,
-                            bool intersectionFree,
-                            Mesh *mesh,
-                            float threshold);
-public:
+                           int dir,
+                           int quadDir2,
+                           ScalarField *g,
+                           int &intersectionPreservingVerticesCount,
+                           EdgePolygonSet &edgePolygonSet,
+                           bool intersectionFree,
+                           Mesh *mesh,
+                           float threshold);
+
+  public:
   RectilinearGrid grid;
-  Octree *children[8] {nullptr};
+  Octree *children[8]{nullptr};
   int childIndex;
   bool isLeaf;
   bool clusterable{true};

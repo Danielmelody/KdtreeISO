@@ -10,9 +10,10 @@
 #include "Utils.h"
 
 class ScalarField {
-protected:
+  protected:
   uint8_t materialID;
-public:
+
+  public:
   virtual float value(const glm::fvec3 &p) = 0;
   virtual float index(const PositionCode &code) = 0;
   virtual bool solve(const glm::fvec3 &p1, const glm::fvec3 &p2, glm::fvec3 &out) = 0;

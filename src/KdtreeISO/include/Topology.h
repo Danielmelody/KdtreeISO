@@ -11,18 +11,19 @@
 #include "ScalarField.h"
 
 class Topology : public ScalarField {
-public:
+  public:
   bool solve(const glm::fvec3 &p1, const glm::fvec3 &p2, glm::fvec3 &out) override;
-  virtual float index(const PositionCode &code) override ;
+  virtual float index(const PositionCode &code) override;
   float laplaceOperator(const glm::fvec3 &p);
-  float gradientOffset() override { return 0.01f;}
+  float gradientOffset() override { return 0.01f; }
   virtual ~Topology() = default;
 };
 
 class Union : public Topology {
   Topology *l;
   Topology *r;
-public:
+
+  public:
   Union(Topology *l, Topology *r) : l(l), r(r) {}
   float value(const glm::fvec3 &p) override { return std::min(l->value(p), r->value(p)); }
   ~Union() override {
@@ -33,8 +34,9 @@ public:
 
 class UnionList : public Topology {
   std::vector<Topology *> _list;
-public:
-  UnionList(std::vector<Topology*> list) : _list(std::move(list)) {}
+
+  public:
+  UnionList(std::vector<Topology *> list) : _list(std::move(list)) {}
   float value(const glm::fvec3 &p) override {
     float d = 1e20;
     for (auto t : _list) {
@@ -53,7 +55,8 @@ class ExpUnion : public Topology {
   Topology *l;
   Topology *r;
   float k;
-public:
+
+  public:
   ExpUnion(Topology *l, Topology *r, float k = 32.f) : l(l), r(r), k(k) {}
   float value(const glm::fvec3 &p) override {
     float res = exp(-k * l->value(p)) + exp(-k * r->value(p));
@@ -68,7 +71,8 @@ public:
 class Difference : public Topology {
   Topology *l;
   Topology *r;
-public:
+
+  public:
   Difference(Topology *l, Topology *r) : l(l), r(r) {}
   float value(const glm::fvec3 &p) override { return std::max(l->value(p), -r->value(p)); }
   ~Difference() override {
@@ -80,7 +84,8 @@ public:
 class Intersection : public Topology {
   Topology *l;
   Topology *r;
-public:
+
+  public:
   Intersection(Topology *l, Topology *r) : l(l), r(r) {}
   float value(const glm::fvec3 &p) override { return std::max(l->value(p), r->value(p)); }
   ~Intersection() override {
@@ -92,7 +97,8 @@ public:
 class Transform : public Topology {
   glm::mat4 trans;
   Topology *inner;
-public:
+
+  public:
   Transform(const glm::mat4 &trans, Topology *inner) : trans(trans), inner(inner) {}
   ~Transform() override { delete inner; }
   float value(const glm::fvec3 &root) override;
@@ -101,7 +107,8 @@ public:
 class Sphere : public Topology {
   float radius;
   glm::fvec3 center;
-public:
+
+  public:
   explicit Sphere(float radius, glm::fvec3 center = glm::fvec3(0)) : radius(radius), center(center) {}
   ~Sphere() override {}
   float value(const glm::fvec3 &p) override;
@@ -111,16 +118,18 @@ public:
 class AABB : public Topology {
   glm::fvec3 min_;
   glm::fvec3 max_;
-public:
+
+  public:
   float value(const glm::fvec3 &p) override;
-  AABB(glm::fvec3 min_, glm::fvec3 max_) : min_(min_), max_(max_) {};
+  AABB(glm::fvec3 min_, glm::fvec3 max_) : min_(min_), max_(max_){};
   ~AABB() override {}
 };
 
 class Torus : public Topology {
   float r1;
   float r2;
-public:
+
+  public:
   Torus(float r1, float r2) : r1(r1), r2(r2) {}
   float value(const glm::fvec3 &p) override {
     glm::vec2 q = glm::vec2(glm::length(glm::vec2(p.x, p.z)) - r1, p.y);
@@ -130,7 +139,8 @@ public:
 
 class Cylinder : public Topology {
   glm::fvec3 c;
-public:
+
+  public:
   explicit Cylinder(const glm::fvec3 &c) : c(c) {}
   float value(const glm::fvec3 &p) override { return glm::length(glm::vec2(p.x, p.z) - glm::vec2(c.x, c.y)) - c.z; }
 };
@@ -139,7 +149,8 @@ class Capsule : public Topology {
   glm::fvec3 a;
   glm::fvec3 b;
   float r;
-public:
+
+  public:
   Capsule(const glm::fvec3 &a, const glm::fvec3 &b, float r) : a(a), b(b), r(r) {}
   float value(const glm::fvec3 &p) override {
     glm::fvec3 pa = p - a, ba = b - a;
@@ -151,7 +162,8 @@ public:
 class Heart : public Topology {
   float scale;
   glm::fvec3 center;
-public:
+
+  public:
   explicit Heart(float scale, glm::fvec3 center = glm::fvec3(0)) : scale(scale), center(center) {}
   ~Heart() override {}
   float value(const glm::fvec3 &p) override;

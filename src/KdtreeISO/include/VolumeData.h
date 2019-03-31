@@ -25,20 +25,21 @@ class VolumeData : public ScalarField {
   uint8_t *data{nullptr};
   PositionCode minCode;
   PositionCode scale;
-  float index(const PositionCode& code) override ;
-public:
+  float index(const PositionCode &code) override;
+
+  public:
   VolumeData(std::string wildcard, int levels, int width, int height, PositionCode minCode, PositionCode scale)
-      : wildcard(std::move(wildcard)),
-        levels(levels),
-        width(width),
-        height(height),
-        minCode(minCode),
-        scale(scale) {}
+    : wildcard(std::move(wildcard)),
+      levels(levels),
+      width(width),
+      height(height),
+      minCode(minCode),
+      scale(scale) {}
   inline int codeToOffset(PositionCode code) {
     return code.z * width * height + code.y * width + code.x;
   }
   float value(const glm::fvec3 &p) override;
-  float gradientOffset() override { return RectilinearGrid::getUnitSize();}
+  float gradientOffset() override { return RectilinearGrid::getUnitSize(); }
   bool solve(const glm::fvec3 &p1, const glm::fvec3 &p2, glm::fvec3 &out) override;
   void readTIFF();
 };

@@ -12,23 +12,21 @@ void Mesh::generateFlatNormals() {
   std::vector<unsigned int> flat_indices;
   for (unsigned int i = 0; i < indices.size() / 3; ++i) {
     glm::fvec3 normal =
-        normals[indices[i * 3 + 0]] +
-            normals[indices[i * 3 + 1]] +
-            normals[indices[i * 3 + 2]];
+      normals[indices[i * 3 + 0]] +
+      normals[indices[i * 3 + 1]] +
+      normals[indices[i * 3 + 2]];
 
     glm::vec3 c1 = glm::normalize(positions[indices[i * 3 + 0]] - positions[indices[i * 3 + 1]]);
     glm::vec3 c2 = glm::normalize(positions[indices[i * 3 + 0]] - positions[indices[i * 3 + 2]]);
 
     c1 -= glm::dot(c1, c2) * c2;
     c1 = glm::normalize(c1);
-//    float d = glm::dot(c1, c2);
+    //    float d = glm::dot(c1, c2);
     normal -= glm::dot(normal, c1) * c1;
     normal -= glm::dot(normal, c2) * c2;
     if (normal == glm::fvec3(0.f)) {
       continue;
     }
-
-
 
     normal = glm::normalize(normal);
     for (unsigned int j = 0; j < 3; ++j) {
@@ -54,8 +52,8 @@ void Mesh::addTriangle(Vertex **vertices, ScalarField *g) {
     auto targetVert = vertices[j];
     Vertex *adjacentVerts[2] = {vertices[(j + 1) % 3], vertices[(j + 2) % 3]};
     glm::fvec3 offset =
-        adjacentVerts[1]->hermiteP - targetVert->hermiteP +
-            adjacentVerts[0]->hermiteP - targetVert->hermiteP;
+      adjacentVerts[1]->hermiteP - targetVert->hermiteP +
+      adjacentVerts[0]->hermiteP - targetVert->hermiteP;
     offset *= 0.05f;
     glm::fvec3 normal;
     g->normal(targetVert->hermiteP + offset, normal);
@@ -63,11 +61,11 @@ void Mesh::addTriangle(Vertex **vertices, ScalarField *g) {
       indices.push_back(static_cast<unsigned int>(positions.size()));
       positions.push_back(targetVert->hermiteP);
       normals.push_back(normal);
-    } else {
+    }
+    else {
       indices.push_back(targetVert->vertexIndex);
     }
   }
-
 }
 void Mesh::drawAABBDebug(glm::fvec3 min, glm::fvec3 max) {
   auto offset = max - min;

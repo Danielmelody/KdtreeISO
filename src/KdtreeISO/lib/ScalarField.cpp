@@ -30,20 +30,19 @@ void ScalarField::normal(const fvec3 &p, fvec3 &out) {
   }
   out = glm::normalize(fvec3(nx, ny, nz));
 
-
-//  constexpr int filterSize = 5;
-//  float l = gradientOffset();
-//  for (int x = 0; x < filterSize; ++x) {
-//    for (int y = 0; y < filterSize; ++y) {
-//      for (int z = 0; z < filterSize; ++z) {
-//        out += p + fvec3((x - filterSize / 2) * l, (y - filterSize / 2) * l, (z - filterSize / 2) * l);
-//      }
-//    }
-//  }
-//  if (out.x == 0.f && out.y == 0.f && out.z == 0.f) {
-//    out = glm::normalize(fvec3(1));
-//  }
-//  out = glm::normalize(out);
+  //  constexpr int filterSize = 5;
+  //  float l = gradientOffset();
+  //  for (int x = 0; x < filterSize; ++x) {
+  //    for (int y = 0; y < filterSize; ++y) {
+  //      for (int z = 0; z < filterSize; ++z) {
+  //        out += p + fvec3((x - filterSize / 2) * l, (y - filterSize / 2) * l, (z - filterSize / 2) * l);
+  //      }
+  //    }
+  //  }
+  //  if (out.x == 0.f && out.y == 0.f && out.z == 0.f) {
+  //    out = glm::normalize(fvec3(1));
+  //  }
+  //  out = glm::normalize(out);
   assert(!isnan(out.x));
 }
 glm::fvec3 ScalarField::gradient(const glm::fvec3 &p) {

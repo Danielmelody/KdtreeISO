@@ -30,7 +30,7 @@ struct RectilinearGrid {
   explicit RectilinearGrid(PositionCode minCode = PositionCode(0),
                            PositionCode maxCode = PositionCode(0),
                            QefSolver sum = QefSolver())
-      : minCode(minCode), maxCode(maxCode), allQef(sum) {
+    : minCode(minCode), maxCode(maxCode), allQef(sum) {
     solve(allQef, approximate);
   }
 
@@ -41,12 +41,11 @@ struct RectilinearGrid {
   bool sampleQef(ScalarField *t, bool all);
   void draw(Mesh *mesh);
   inline glm::fvec3 cornerPos(int i) {
-    return min_offset_subdivision(i) * codeToPos(maxCode - minCode, RectilinearGrid::getUnitSize())
-        + codeToPos(minCode, RectilinearGrid::getUnitSize());
+    return min_offset_subdivision(i) * codeToPos(maxCode - minCode, RectilinearGrid::getUnitSize()) + codeToPos(minCode, RectilinearGrid::getUnitSize());
   }
 
   inline int edgeComponentIndex(int corner1, int corner2) {
-//    assert(cornerSigns[corner1] != cornerSigns[corner2]);
+    //    assert(cornerSigns[corner1] != cornerSigns[corner2]);
     if (cornerSigns[corner1] != 0) {
       return componentIndices[corner1];
     }
@@ -95,7 +94,7 @@ struct RectilinearGrid {
   static bool isInterFreeCondition2Faild(const std::vector<Vertex *> &polygons,
                                          const glm::fvec3 &p1,
                                          const glm::fvec3 &p2);
-  template<class GridHolder>
+  template <class GridHolder>
   static bool checkSign(const std::array<GridHolder *, 4> &nodes,
                         int quadDir1,
                         int quadDir2,
@@ -103,18 +102,19 @@ struct RectilinearGrid {
                         int &side,
                         PositionCode &minEnd,
                         PositionCode &maxEnd);
-  template<class GridHolder>
+  template <class GridHolder>
   static void generateQuad(const std::array<GridHolder, 4> &nodes,
                            int quadDir1,
                            int quadDir2,
                            Mesh *mesh,
                            ScalarField *t,
                            float threshold);
-private:
+
+  private:
   static float unitSize;
 };
 
-template<class GridHolder>
+template <class GridHolder>
 bool RectilinearGrid::checkSign(const std::array<GridHolder *, 4> &nodes,
                                 int quadDir1,
                                 int quadDir2,
@@ -125,17 +125,16 @@ bool RectilinearGrid::checkSign(const std::array<GridHolder *, 4> &nodes,
   int dir = 3 - quadDir1 - quadDir2;
   if (nodes[0] != nodes[1]) {
     maxEnd = minEnd = nodes[0]->grid.maxCode;
-  } else {
+  }
+  else {
     maxEnd = minEnd = nodes[3]->grid.minCode;
   }
   maxEnd[dir] = std::min(
-      std::min(nodes[0]->grid.maxCode[dir], nodes[1]->grid.maxCode[dir]),
-      std::min(nodes[2]->grid.maxCode[dir], nodes[3]->grid.maxCode[dir])
-  );
+    std::min(nodes[0]->grid.maxCode[dir], nodes[1]->grid.maxCode[dir]),
+    std::min(nodes[2]->grid.maxCode[dir], nodes[3]->grid.maxCode[dir]));
   minEnd[dir] = std::max(
-      std::max(nodes[0]->grid.minCode[dir], nodes[1]->grid.minCode[dir]),
-      std::max(nodes[2]->grid.minCode[dir], nodes[3]->grid.minCode[dir])
-  );
+    std::max(nodes[0]->grid.minCode[dir], nodes[1]->grid.minCode[dir]),
+    std::max(nodes[2]->grid.minCode[dir], nodes[3]->grid.minCode[dir]));
   if (minEnd[dir] >= maxEnd[dir]) {
     return false;
   }
@@ -147,32 +146,32 @@ bool RectilinearGrid::checkSign(const std::array<GridHolder *, 4> &nodes,
 
   if (v2 >= 0 && v1 <= 0) {
     side = 0;
-  } else {
+  }
+  else {
     side = 1;
   }
 
-//  for (int i = 0; i < 4; ++i) {
-//    if (nodes[i] != nodes[oppositeQuadIndex(i)]) {
-//      minEnd[dir] = nodes[i]->grid.minEnd[dir];
-//      maxEnd[dir] = nodes[i]->grid.maxEnd[dir];
-//      v1 = s->index(minEnd);
-//      v2 = s->index(maxEnd);
-//      if ((v1 > 0 && v2 > 0) || (v1 < 0 && v2 < 0)) {
-//        return false;
-//      }
-//    }
-//  }
+  //  for (int i = 0; i < 4; ++i) {
+  //    if (nodes[i] != nodes[oppositeQuadIndex(i)]) {
+  //      minEnd[dir] = nodes[i]->grid.minEnd[dir];
+  //      maxEnd[dir] = nodes[i]->grid.maxEnd[dir];
+  //      v1 = s->index(minEnd);
+  //      v2 = s->index(maxEnd);
+  //      if ((v1 > 0 && v2 > 0) || (v1 < 0 && v2 < 0)) {
+  //        return false;
+  //      }
+  //    }
+  //  }
   return true;
 }
 
-template<class GridHolder>
+template <class GridHolder>
 void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
                                    int quadDir1,
                                    int quadDir2,
                                    Mesh *mesh,
                                    ScalarField *t,
-                                   float threshold
-) {
+                                   float threshold) {
   int edgeSide;
   PositionCode minEnd, maxEnd;
   if (!RectilinearGrid::checkSign(nodes, quadDir1, quadDir2, t, edgeSide, minEnd, maxEnd)) {
@@ -186,7 +185,8 @@ void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
       int c1, c2;
       quadIndex(quadDir1, quadDir2, symmetryQuadIndex(i), c1, c2);
       componentIndices[i] = nodes[i]->grid.edgeComponentIndex(c1, c2);
-    } else {
+    }
+    else {
       componentIndices[i] = nodes[i]->grid.faceComponentIndex(quadDir2, lineDir, 1 - i / 2, edgeSide);
     }
     if (componentIndices[i] == -1) {
@@ -201,14 +201,13 @@ void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
   if (nodes[2] != nodes[3]) {
     polygons.push_back(&nodes[2]->grid.vertices.at(componentIndices[2]));
   }
-  std::set<Vertex*> identicals;
-  for (auto v: polygons) {
+  std::set<Vertex *> identicals;
+  for (auto v : polygons) {
     identicals.insert(v);
   }
   if (identicals.size() < 3) {
     return;
   }
-
 
   bool condition1Failed = false;
   int firstConcaveFaceVertex = 0;
@@ -264,14 +263,15 @@ void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
           }
           if (pointCount > 0) {
             firstConcaveFaceVertex = i;
-            auto faceV = new Vertex(massPointSum / (float) pointCount);
+            auto faceV = new Vertex(massPointSum / (float)pointCount);
             mesh->addVertex(faceV, t);
             a->faceVertices[b] = faceV;
             b->faceVertices[a] = faceV;
             condition1Failed = true;
           }
         }
-      } else {
+      }
+      else {
         sameCellIndex[0] = edgeAdjacentCellIndexA;
         sameCellIndex[1] = edgeAdjacentCellIndexB;
       }
@@ -281,8 +281,7 @@ void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
     for (int i = 0; i < 4; ++i) {
       int edgeAdjacentCellIndexA = edgeTestNodeOrder[i][0];
       int edgeAdjacentCellIndexB = edgeTestNodeOrder[i][1];
-      if (edgeAdjacentCellIndexA != sameCellIndex[0] && edgeAdjacentCellIndexA != sameCellIndex[1]
-          && edgeAdjacentCellIndexB != sameCellIndex[0] && edgeAdjacentCellIndexB != sameCellIndex[1]) {
+      if (edgeAdjacentCellIndexA != sameCellIndex[0] && edgeAdjacentCellIndexA != sameCellIndex[1] && edgeAdjacentCellIndexB != sameCellIndex[0] && edgeAdjacentCellIndexB != sameCellIndex[1]) {
         minCellIndex = edgeAdjacentCellIndexA;
       }
     }
@@ -323,11 +322,11 @@ void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
       }
       for (int i = 0; i < polygons.size() - 2; ++i) {
         Vertex *triangle[3] = {
-            polygons[0], polygons[i + 1], polygons[i + 2]
-        };
+          polygons[0], polygons[i + 1], polygons[i + 2]};
         mesh->addTriangle(triangle, t);
       }
-    } else {
+    }
+    else {
       Vertex edgeVertex;
       t->solve(p1, p2, edgeVertex.hermiteP);
       mesh->addVertex(&edgeVertex, t);
@@ -346,16 +345,15 @@ void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
       }
       for (int i = 0; i < polygons.size() / 2; ++i) {
         Vertex *triangle[3] = {
-            &edgeVertex, polygons[i * 2], polygons[i * 2 + 1]
-        };
+          &edgeVertex, polygons[i * 2], polygons[i * 2 + 1]};
         mesh->addTriangle(triangle, t);
       }
     }
-  } else {
+  }
+  else {
     for (int i = 2; i < polygons.size(); ++i) {
       Vertex *triangle[3] = {
-          polygons[0], polygons[i - 1], polygons[i]
-      };
+        polygons[0], polygons[i - 1], polygons[i]};
       mesh->addTriangle(triangle, t);
     }
   }

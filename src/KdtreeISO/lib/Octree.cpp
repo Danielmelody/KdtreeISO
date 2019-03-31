@@ -29,12 +29,13 @@ Octree *Octree::buildWithScalarField(PositionCode minCode, int depth, ScalarFiel
       return nullptr;
     }
     root->isLeaf = true;
-  } else {
-    PositionCode subSizeCode = PositionCode(static_cast<uint16_t >(1 << (depth - 2)));
+  }
+  else {
+    PositionCode subSizeCode = PositionCode(static_cast<uint16_t>(1 << (depth - 2)));
     for (int i = 0; i < 8; ++i) {
       PositionCode subMinCode = minCode + subSizeCode * decodeCell(i);
       root->children[i] =
-          buildWithScalarField(subMinCode, depth - 1, scalarField, as_mipmap);
+        buildWithScalarField(subMinCode, depth - 1, scalarField, as_mipmap);
       if (root->children[i]) {
         noChildren = false;
         root->children[i]->childIndex = static_cast<int8_t>(i);
@@ -59,7 +60,7 @@ Octree *Octree::buildWithScalarField(PositionCode minCode, int depth, ScalarFiel
     }
   }
   root->grid.solve(root->grid.allQef, root->grid.approximate);
-//  assert(root->grid.error >= -0.001f);
+  //  assert(root->grid.error >= -0.001f);
   return root;
 }
 
@@ -70,8 +71,7 @@ void Octree::getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefS
   if (glm::any(glm::greaterThanEqual(minPos, maxPos))) {
     return;
   }
-  if (glm::any(glm::greaterThanEqual(minPos, root->grid.maxCode))
-      || glm::any(glm::lessThanEqual(maxPos, root->grid.minCode))) {
+  if (glm::any(glm::greaterThanEqual(minPos, root->grid.maxCode)) || glm::any(glm::lessThanEqual(maxPos, root->grid.minCode))) {
     return;
   }
   minPos = glm::max(root->grid.minCode, minPos);
@@ -96,7 +96,7 @@ void Octree::simplify(Octree *root, float threshold) {
     simplify(root->children[i], threshold);
   }
   if (root->clusterable && root->grid.approximate.error < threshold) {
-    for (auto &child: root->children) {
+    for (auto &child : root->children) {
       child = nullptr;
     }
     root->isLeaf = true;
@@ -154,8 +154,8 @@ void Octree::contourCell(Octree *root,
   }
   for (int i = 0; i < 12; ++i) {
     Octree *nodes[2] = {
-        root->children[cellProcFaceMask[i][0]],
-        root->children[cellProcFaceMask[i][1]],
+      root->children[cellProcFaceMask[i][0]],
+      root->children[cellProcFaceMask[i][1]],
     };
     contourFace(nodes,
                 cellProcFaceMask[i][2],
@@ -217,21 +217,23 @@ void Octree::contourFace(Octree *nodes[2],
   for (int i = 0; i < 4; ++i) {
     Octree *edge_nodes[4];
     const int c[4] =
-        {
-            faceProcEdgeMask[dir][i][1],
-            faceProcEdgeMask[dir][i][2],
-            faceProcEdgeMask[dir][i][3],
-            faceProcEdgeMask[dir][i][4],
-        };
+      {
+        faceProcEdgeMask[dir][i][1],
+        faceProcEdgeMask[dir][i][2],
+        faceProcEdgeMask[dir][i][3],
+        faceProcEdgeMask[dir][i][4],
+      };
     for (int j = 0; j < 4; ++j) {
       const int order = faceNodeOrder[j];
       if (nodes[order]->isLeaf) {
         edge_nodes[j] = nodes[order];
-      } else {
+      }
+      else {
         edge_nodes[j] = nodes[order]->children[c[j]];
       }
     }
-    if (dir == 0 && faceProcEdgeMask[dir][i][5] == 2) { ;
+    if (dir == 0 && faceProcEdgeMask[dir][i][5] == 2) {
+      ;
     }
     contourEdge(edge_nodes,
                 faceProcEdgeMask[dir][i][5],
@@ -283,7 +285,8 @@ void Octree::contourEdge(Octree **nodes,
         code[quadDir2] = (3 - j) / 2;
 
         subdivision_edge[j] = nodes[j]->children[encodeCell(code)];
-      } else {
+      }
+      else {
         subdivision_edge[j] = nodes[j];
       }
     }
@@ -339,7 +342,8 @@ void Octree::calClusterbility(Octree *root, ScalarField *s) {
     int leftIndex = cellProcFaceMask[i][0];
     int rightIndex = cellProcFaceMask[i][1];
     auto left = root->children[leftIndex] ? &root->children[leftIndex]->grid : nullptr;
-    auto right = root->children[rightIndex] ? &root->children[rightIndex]->grid : nullptr;;
+    auto right = root->children[rightIndex] ? &root->children[rightIndex]->grid : nullptr;
+    ;
     auto dir = cellProcFaceMask[i][2];
     auto halfSize = (root->grid.maxCode - root->grid.minCode) / 2;
     auto minCode = root->grid.minCode + decodeCell(leftIndex) * halfSize;
@@ -365,12 +369,13 @@ void Octree::combineComponents(ScalarField *s) {
       auto zMinCode = PositionCode(x, y, 0) * halfSize + grid.minCode;
       auto zMaxCode = PositionCode(x, y, 1) * halfSize + halfSize + grid.minCode;
       auto l =
-          children[encodeCell(PositionCode(x, y, 0))] ? &children[encodeCell(PositionCode(x, y, 0))]->grid : nullptr;
+        children[encodeCell(PositionCode(x, y, 0))] ? &children[encodeCell(PositionCode(x, y, 0))]->grid : nullptr;
       auto r =
-          children[encodeCell(PositionCode(x, y, 1))] ? &children[encodeCell(PositionCode(x, y, 1))]->grid : nullptr;
+        children[encodeCell(PositionCode(x, y, 1))] ? &children[encodeCell(PositionCode(x, y, 1))]->grid : nullptr;
       if (!l && !r) {
         ygrids[y] = nullptr;
-      } else {
+      }
+      else {
         ygrids[y] = &ygridPool[x * 2 + y];
         ygrids[y]->minCode = zMinCode;
         ygrids[y]->maxCode = zMaxCode;
@@ -384,7 +389,8 @@ void Octree::combineComponents(ScalarField *s) {
     }
     if (!ygrids[0] && !ygrids[1]) {
       xgrids[x] = nullptr;
-    } else {
+    }
+    else {
       xgrids[x] = &xgridPool[x];
       xgrids[x]->minCode = yMinCode;
       xgrids[x]->maxCode = yMaxCode;
@@ -417,9 +423,9 @@ void Octree::combineComponents(ScalarField *s) {
     }
   }
 
-// to avoid a specific MC case
+  // to avoid a specific MC case
   int count = 0;
-  for (auto c: grid.components) {
+  for (auto c : grid.components) {
     count += c.pointCount;
   }
   if (count != grid.allQef.pointCount) {
