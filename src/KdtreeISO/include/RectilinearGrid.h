@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Danielhu on 2018/5/9.
 //
 
@@ -172,7 +172,7 @@ void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
                                    int quadDir2,
                                    Mesh *mesh,
                                    ScalarField *t,
-                                   float threshold) {
+                                   float) {
   int edgeSide;
   PositionCode minEnd, maxEnd;
   if (!RectilinearGrid::checkSign(nodes, quadDir1, quadDir2, t, edgeSide, minEnd, maxEnd)) {
@@ -247,9 +247,9 @@ void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
                                      faceMin,
                                      faceMax,
                                      testDir)) {
-          fvec3 minEnd = faceMin + directionMap(lineDir) * (faceMax - faceMin);
-          fvec3 maxEnd = faceMax - directionMap(lineDir) * (faceMax - faceMin);
-          glm::fvec3 points[4] = {faceMin, minEnd, faceMax, maxEnd};
+          fvec3 minEndDir = faceMin + directionMap(lineDir) * (faceMax - faceMin);
+          fvec3 maxEndDir = faceMax - directionMap(lineDir) * (faceMax - faceMin);
+          glm::fvec3 points[4] = {faceMin, minEndDir, faceMax, maxEndDir};
           fvec3 massPointSum(0.f);
           int pointCount = 0;
           for (int k = 0; k < 4; ++k) {
@@ -301,7 +301,8 @@ void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
     }
     condition2Failed = condition2Failed && reverseCondition2Failed;
   }
-  if (false && (condition1Failed || condition2Failed)) {
+#ifdef INTERSECTION_FREE
+  if (condition1Failed || condition2Failed) {
     GridHolder circle[4] = {nodes[0], nodes[1], nodes[3], nodes[2]};
     polygons.clear();
     if (!condition2Failed) {
@@ -352,12 +353,15 @@ void RectilinearGrid::generateQuad(const std::array<GridHolder, 4> &nodes,
     }
   }
   else {
+#endif
     for (int i = 2; i < polygons.size(); ++i) {
       Vertex *triangle[3] = {
         polygons[0], polygons[i - 1], polygons[i]};
       mesh->addTriangle(triangle, t);
     }
+#ifdef INTERSECTION_FREE
   }
+#endif
 }
 
 #endif //VOXELWORLD_RECTILINEARGRID_H

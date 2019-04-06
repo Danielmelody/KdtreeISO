@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Danielhu on 2018/1/16.
 //
 
@@ -95,15 +95,15 @@ struct MeshBuffer {
 void addMesh(Mesh *mesh, const MeshBuffer &buffer) {
   glBindBuffer(GL_ARRAY_BUFFER, buffer.positions);
   glBufferData(GL_ARRAY_BUFFER, mesh->positions.size() * sizeof(fvec3),
-               &(mesh->positions[0]), GL_STATIC_DRAW);
+               mesh->positions.data(), GL_STATIC_DRAW);
 
   glBindBuffer(GL_ARRAY_BUFFER, buffer.normals);
   glBufferData(GL_ARRAY_BUFFER, mesh->normals.size() * sizeof(fvec3),
-               &(mesh->normals[0]), GL_STATIC_DRAW);
+               mesh->normals.data(), GL_STATIC_DRAW);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.indices);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-               mesh->indices.size() * sizeof(unsigned int), &(mesh->indices[0]),
+               mesh->indices.size() * sizeof(unsigned int), mesh->indices.data(),
                GL_STATIC_DRAW);
 }
 
@@ -157,21 +157,21 @@ void error(int error, const char *description) {
   cerr << error << ": " << description << endl;
 }
 
-void mouseInput(GLFWwindow *window, double x, double y) {
+void mouseInput(GLFWwindow *, double x, double y) {
   if (pressing) {
-    rotateX += 0.01 * (x - previousCursorX);
-    rotateY += 0.01 * (y - previousCursorY);
+    rotateX += 0.01f * static_cast<float>(x - previousCursorX);
+    rotateY += 0.01f * static_cast<float>(y - previousCursorY);
     previousCursorX = x;
     previousCursorY = y;
   }
 }
 
-void scroll(GLFWwindow *window, double dx, double dy) {
-  cameraOffset -= 0.2 * dy;
+void scroll(GLFWwindow *, double, double dy) {
+  cameraOffset -= 0.2f * (float)dy;
   pressing = true;
 }
 
-void press(GLFWwindow *window, int button, int action, int mods) {
+void press(GLFWwindow *window, int button, int action, int) {
   if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
     pressing = true;
     glfwGetCursorPos(window, &previousCursorX, &previousCursorY);
@@ -276,7 +276,7 @@ int main(int argc, const char **argv) {
     new Intersection(
       new Difference(
         new Cylinder(fvec3(0.f, 0.f, 4.f)),
-        new Cylinder(fvec3(0.f, 0.f, 3.5f))),
+        new Cylinder(fvec3(0.f, 0.f, 3.2f))),
       new AABB(fvec3(-4), fvec3(4)))
 
     // )
@@ -358,8 +358,8 @@ int main(int argc, const char **argv) {
     //      )
   );
 
-  int octDepth = 7;
-  RectilinearGrid::setUnitSize(16 / std::pow(octDepth, 2));
+  int octDepth = 6;
+  RectilinearGrid::setUnitSize((float)(16 / std::pow(octDepth, 2)));
   PositionCode sizeCode = PositionCode(1 << (octDepth - 1));
   float threshold = parameters["e"].as<float>();
 

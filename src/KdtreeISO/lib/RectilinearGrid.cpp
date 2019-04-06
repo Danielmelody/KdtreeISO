@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Danielhu on 2018/5/10.
 //
 
@@ -47,8 +47,7 @@ void RectilinearGrid::assignSign(ScalarField *t) {
   int8_t mtlID = t->getMaterialID();
   for (int i = 0; i < 8; ++i) {
     PositionCode code = decodeCell(i);
-    auto offCode = CodeBinaryOp(sizeCode, code, *);
-    float val = t->index(CodeBinaryOp(minCode, offCode, +));
+    float val = t->index(minCode + sizeCode * code);
     cornerSigns[i] = (uint8_t)(val >= 0. ? 0 : mtlID);
   }
   isSigned = !((cornerSigns[0] == cornerSigns[1]) &&
@@ -105,7 +104,6 @@ bool RectilinearGrid::sampleQef(ScalarField *t, bool all) {
   calCornerComponents();
   const auto min = codeToPos(minCode, RectilinearGrid::getUnitSize());
 
-  LOGV(min)
   // auto minX = codeToPos(minCode, RectilinearGrid::getUnitSize()).x;
   // assert(!isinf(minX));
   auto isize = maxCode - minCode;

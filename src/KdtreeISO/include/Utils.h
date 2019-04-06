@@ -15,10 +15,6 @@ using glm::fvec3;
 
 using PositionCode = glm::ivec3;
 
-// for strange reason the binary operators not work in darwin 10.14 clang debug mode
-#define CodeBinaryOp(a, b, op) \
-  PositionCode(a.x op b.x, a.y op b.y, a.z op b.z)
-
 #ifndef NDEBUG
 #define LOGV(v) \
   std::cout << #v << " " << v.x << " " << v.y << " " << v.z << " " << std::endl;

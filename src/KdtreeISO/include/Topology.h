@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <vector>
 #include <glm/glm.hpp>
+#include <limits>
 #include "ScalarField.h"
 
 class Topology : public ScalarField {
@@ -39,7 +40,7 @@ class UnionList : public Topology {
   public:
   UnionList(std::vector<Topology *> list) : _list(std::move(list)) {}
   float value(const glm::fvec3 &p) override {
-    float d = 1e20;
+    float d = std::numeric_limits<float>::max();
     for (auto t : _list) {
       d = std::min(t->value(p), d);
     }
@@ -111,7 +112,7 @@ class Sphere : public Topology {
 
   public:
   explicit Sphere(float radius, glm::fvec3 center = glm::fvec3(0)) : radius(radius), center(center) {}
-  ~Sphere() override { std::cout << "free sphere" << std::endl; }
+  ~Sphere() override {}
   float value(const glm::fvec3 &p) override;
   // bool solve(const glm::fvec3 &p1, const glm::fvec3 &p2, glm::fvec3 &out) override;
 };

@@ -88,7 +88,7 @@ struct Kdtree {
                            Mesh *mesh,
                            ScalarField *t,
                            float threshold);
-  static int chooseAxisDir(Octree *octree, QefSolver &qef, const PositionCode &minCode, const PositionCode &maxCode);
+  static int chooseAxisDir(QefSolver &qef, const PositionCode &minCode, const PositionCode &maxCode);
   static Kdtree *buildFromOctree(Octree *octree,
                                  const PositionCode &minCode,
                                  const PositionCode &maxCode,

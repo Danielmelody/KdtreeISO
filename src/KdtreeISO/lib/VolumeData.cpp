@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Danielhu on 2018/5/29.
 //
 
@@ -35,7 +35,7 @@ float VolumeData::index(const PositionCode &code) {
 float VolumeData::value(const glm::fvec3 &p) {
   float l = RectilinearGrid::getUnitSize();
   return index(posToCode(p, l));
-  PositionCode samples[8];
+  /*PositionCode samples[8];
   float values[8];
   for (int i = 0; i < 8; ++i) {
     samples[i] = posToCodeFloor(p + l * min_offset_subdivision(i), l);
@@ -50,7 +50,7 @@ float VolumeData::value(const glm::fvec3 &p) {
   float c0 = c00 * (1 - d.y) + c10 * d.y;
   float c1 = c01 * (1 - d.y) + c11 * d.y;
   float c = c0 * (1 - d.z) + c1 * d.z;
-  return c;
+  return c;*/
 }
 
 bool VolumeData::solve(const glm::fvec3 &p1, const glm::fvec3 &p2,

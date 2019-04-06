@@ -1,4 +1,4 @@
-/*
+﻿/*
 
 Copyright (c) 2014, 2015, 2016, 2017 Jarryd Beck
 
@@ -212,8 +212,8 @@ namespace {
 const std::string LQUOTE("\'");
 const std::string RQUOTE("\'");
 #else
-const std::string LQUOTE("‘");
-const std::string RQUOTE("’");
+const std::string LQUOTE("'");
+const std::string RQUOTE("'");
 #endif
 } // namespace
 
@@ -457,7 +457,7 @@ void integer_parser(const std::string &text, T &value) {
       throw argument_incorrect_type(text);
     }
 
-    result = result * base + digit;
+    result = result * (US)base + (US)digit;
   }
 
   detail::check_signed_range<T>(negative, result, text);

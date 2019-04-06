@@ -51,25 +51,13 @@ float Topology::laplaceOperator(const fvec3 &p) {
 
 float Transform::value(const fvec3 &p) {
   fvec3 t = fvec4(p, 1.0) * trans_;
-  LOGV(p);
-  LOGV(t);
   return inner_->value(t);
 }
 
 float Sphere::value(const fvec3 &p) {
   fvec3 off = fvec3(p.x - center.x, p.y - center.y, p.z - center.z);
-  LOGV(p)
-  // LOGV(center)
-  // LOGV(off)
   float l = glm::length(off);
-  // LOGF(l)
-  // abort();
-  assert(!isnan(l));
-  assert(!isnan(radius));
-  assert(!isinf(l));
-  assert(!isinf(radius));
   auto d = l - radius;
-  LOGF(d)
   return d;
 }
 

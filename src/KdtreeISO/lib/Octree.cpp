@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Danielhu on 2018/1/20.
 //
 
@@ -307,9 +307,9 @@ void Octree::generateQuad(Octree **nodes,
                           int dir,
                           int quadDir2,
                           ScalarField *t,
-                          int &intersectionPreservingVerticesCount,
-                          EdgePolygonSet &edgePolygonSet,
-                          bool intersectionFree,
+                          int &,
+                          EdgePolygonSet &,
+                          bool,
                           Mesh *mesh,
                           float threshold) {
   std::array<Octree *, 4> array = {{nodes[0], nodes[1], nodes[2], nodes[3]}};

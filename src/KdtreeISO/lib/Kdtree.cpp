@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Danielhu on 2018/4/22.
 //
 
@@ -11,8 +11,6 @@
 #include "Indicators.h"
 #include "Mesh.h"
 #include "AxisAlignedLine.h"
-
-#pragma clang diagnostic ignored "-Wmissing-braces"
 
 using glm::max;
 using glm::min;
@@ -58,7 +56,7 @@ Kdtree *Kdtree::buildFromOctree(Octree *octree, const PositionCode &minCode, con
 
   int strategy = 1;
   PositionCode bestRightMinCode = maxCode, bestLeftMaxCode = minCode;
-  int dir = chooseAxisDir(octree, sum, minCode, maxCode);
+  int dir = chooseAxisDir(sum, minCode, maxCode);
   int minAxis = minCode[dir];
   int maxAxis = maxCode[dir];
   if (strategy == 0) {
@@ -75,7 +73,7 @@ Kdtree *Kdtree::buildFromOctree(Octree *octree, const PositionCode &minCode, con
   }
   else {
     QefSolver leftSum, rightSum;
-    float minError = 1e20;
+    float minError = std::numeric_limits<float>::max();
     while (maxAxis - minAxis > 1) {
       int mid = (maxAxis + minAxis) / 2;
       PositionCode rightMinCode = minCode;
@@ -127,7 +125,7 @@ Kdtree *Kdtree::buildFromOctree(Octree *octree, const PositionCode &minCode, con
   return kd;
 }
 
-int Kdtree::chooseAxisDir(Octree *octree, QefSolver &qef, const PositionCode &minCode, const PositionCode &maxCode) {
+int Kdtree::chooseAxisDir(QefSolver &qef, const PositionCode &minCode, const PositionCode &maxCode) {
   // naive approach
   int dir = 0;
   int strategy = 1;

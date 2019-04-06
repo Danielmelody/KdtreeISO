@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Danielhu on 2018/1/16.
 //
 
@@ -9,7 +9,7 @@
 
 #define SVD_NUM_SWEEPS 5
 
-const float Tiny_Number = 1.e-4;
+const float Tiny_Number = 1.e-4f;
 // const float Tiny_Number_Erroring = 1.e-8;
 
 glm::fvec3 diag_of_mul(const glm::fvec3 &v1T, const glm::fvec3 v2) {
