@@ -187,9 +187,9 @@ int main(int argc, const char **argv) {
                            "An opengl viewer for paper: Discrete k-d Tree "
                            "Hierarchy for Isosurface Extraction");
   options.add_options()("e,error", "Error threshold.",
-                        cxxopts::value<float>()->default_value("1e-2"))(
+                        cxxopts::value<float>()->default_value("1e-7"))(
     "s,structure", "oct/kd, extracting iso-surface using oct/kd tree.",
-    cxxopts::value<std::string>()->default_value("kd"))(
+    cxxopts::value<std::string>()->default_value("oct"))(
     "rotateX", "Camera eular angle x.",
     cxxopts::value<float>()->default_value("0"))(
     "rotateY", "Camera eular angle y.",
@@ -259,13 +259,10 @@ int main(int argc, const char **argv) {
   MeshBuffer meshBuffers[4];
 
   Transform topology(
-    glm::rotate(glm::translate(mat4(1.f), fvec3(0)), glm::radians(0.f),
-                fvec3(0, 0, 1)),
-    //      new Difference(
-    //          new AABB(fvec3(-8), fvec3(8))
-    //          new AABB(fvec3(-3.5), fvec3(3.5, 3.5, 1.6))
-    //          new Sphere(5.5, fvec3(0))
-    //      )
+    mat4(1.0),
+    // new Difference(
+    //   new AABB(fvec3(-4), fvec3(4)),
+    //   new Sphere(5.5, fvec3(0)))
     // new Difference(
     // new AABB(fvec3(-4), fvec3(4)),
     //          new Union(
@@ -276,7 +273,11 @@ int main(int argc, const char **argv) {
     //                            new Cylinder(fvec3(0.f, 0.f, 3.7f)))
     //          )
     // new Transform(glm::rotate(mat4(), glm::radians(90.f), fvec3(1, 0, 0)),
-    // new Cylinder(fvec3(0.f, 0.f, 3.5f))
+    new Intersection(
+      new Difference(
+        new Cylinder(fvec3(0.f, 0.f, 4.f)),
+        new Cylinder(fvec3(0.f, 0.f, 3.5f))),
+      new AABB(fvec3(-4), fvec3(4)))
 
     // )
     //  new Difference(
@@ -342,7 +343,7 @@ int main(int argc, const char **argv) {
     //          new AABB(fvec3(-5, -5.5, -5), fvec3(5, -5, 5)),
     //          new Cylinder(fvec3(0, 0, 5))
     //      ),
-    new Sphere(3.0, fvec3(0))
+    // static_cast<Topology *>(new Sphere(3.0, fvec3(0)))
     //      )
     //        new AABB(fvec3(-4, -4, 1), fvec3(4, 4, 4))
     //      new Union(
@@ -358,7 +359,7 @@ int main(int argc, const char **argv) {
   );
 
   int octDepth = 7;
-  RectilinearGrid::setUnitSize(0.2);
+  RectilinearGrid::setUnitSize(16 / std::pow(octDepth, 2));
   PositionCode sizeCode = PositionCode(1 << (octDepth - 1));
   float threshold = parameters["e"].as<float>();
 
@@ -376,6 +377,10 @@ int main(int argc, const char **argv) {
   Octree *octree =
     Octree::buildWithScalarField(-sizeCode / 2, octDepth, scalarField,
                                  parameters["s"].as<std::string>() == "kd");
+  if (!octree) {
+    std::cout << "no sign change found!, program exited." << std::endl;
+    exit(0);
+  }
   clock_t oct_build = clock();
   cout << "oct build time:" << (double)(oct_build - begin) / CLOCKS_PER_SEC
        << endl;

@@ -5,7 +5,9 @@
 #ifndef VOXELWORLD_VOLUME_DATA_H
 #define VOXELWORLD_VOLUME_DATA_H
 
-#include <tiffio.h>
+extern "C" {
+#include "tiffio.h"
+}
 #include <cstdint>
 #include <cstdlib>
 #include <string>
@@ -28,14 +30,14 @@ class VolumeData : public ScalarField {
   float index(const PositionCode &code) override;
 
   public:
-  VolumeData(std::string wildcard, int levels, int width, int height, PositionCode minCode, PositionCode scale)
+  VolumeData(std::string wildcard, int levels, int width, int height, const PositionCode &minCode, const PositionCode &scale)
     : wildcard(std::move(wildcard)),
       levels(levels),
       width(width),
       height(height),
       minCode(minCode),
       scale(scale) {}
-  inline int codeToOffset(PositionCode code) {
+  inline int codeToOffset(const PositionCode &code) {
     return code.z * width * height + code.y * width + code.x;
   }
   float value(const glm::fvec3 &p) override;

@@ -5,7 +5,7 @@ set(SOURCE_FILES lib/ScalarField.cpp lib/Topology.cpp lib/Octree.cpp lib/Kdtree.
 find_package(glm REQUIRED)
 find_package(tiff REQUIRED)
 
-add_library(KdtreeISO SHARED ${SOURCE_FILES})
+add_library(KdtreeISO STATIC ${SOURCE_FILES})
 
 
 target_link_libraries(KdtreeISO glm ${TIFF_LIBRARIES})

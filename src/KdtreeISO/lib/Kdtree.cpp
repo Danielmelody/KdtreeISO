@@ -46,7 +46,7 @@ void Kdtree::combineQef() {
                                  &grid);
 }
 
-Kdtree *Kdtree::buildFromOctree(Octree *octree, PositionCode minCode, PositionCode maxCode, ScalarField *t, int depth) {
+Kdtree *Kdtree::buildFromOctree(Octree *octree, const PositionCode &minCode, const PositionCode &maxCode, ScalarField *t, int depth) {
   if (glm::any(glm::greaterThanEqual(minCode, maxCode))) {
     return nullptr;
   }
@@ -127,7 +127,7 @@ Kdtree *Kdtree::buildFromOctree(Octree *octree, PositionCode minCode, PositionCo
   return kd;
 }
 
-int Kdtree::chooseAxisDir(Octree *octree, QefSolver &qef, PositionCode minCode, PositionCode maxCode) {
+int Kdtree::chooseAxisDir(Octree *octree, QefSolver &qef, const PositionCode &minCode, const PositionCode &maxCode) {
   // naive approach
   int dir = 0;
   int strategy = 1;
@@ -152,6 +152,9 @@ int Kdtree::chooseAxisDir(Octree *octree, QefSolver &qef, PositionCode minCode, 
     float error;
     qef.solve(approximate, error);
     auto variance = qef.getVariance(approximate);
+    variance[0] *= size[0];
+    variance[1] *= size[1];
+    variance[2] *= size[2];
     int maxVarDir = 0, minVarDir = 1;
     if (variance[1] > variance[0]) {
       maxVarDir = 1;

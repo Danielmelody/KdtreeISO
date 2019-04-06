@@ -3,7 +3,7 @@ project(Discrete_Kdtree_ISOSURFACING)
 
 set(CMAKE_CXX_STANDARD 14)
 
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Werror -pedantic -Wno-nested-anon-types -Wno-return-std-move -Wno-gnu-anonymous-struct")
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Werror -pedantic")
 
 include_directories(src/KdtreeISO/include)
 

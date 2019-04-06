@@ -4,6 +4,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #define GLM_FORCE_CTOR_INIT
+#define GLM_FORCE_EXPLICIT_CTOR
 
 #include <set>
 #include <Mesh.h>
@@ -39,13 +40,24 @@ void RectilinearGrid::solve(QefSolver &qef, Vertex &v) {
 }
 
 void RectilinearGrid::assignSign(ScalarField *t) {
-  auto sizeCode = maxCode - minCode;
+  auto sizeCode = PositionCode(
+    maxCode.x - minCode.x,
+    maxCode.y - minCode.y,
+    maxCode.z - minCode.z);
   int8_t mtlID = t->getMaterialID();
   for (int i = 0; i < 8; ++i) {
     PositionCode code = decodeCell(i);
-    float val = t->index(minCode + sizeCode * code);
+    auto offCode = CodeBinaryOp(sizeCode, code, *);
+    float val = t->index(CodeBinaryOp(minCode, offCode, +));
     cornerSigns[i] = (uint8_t)(val >= 0. ? 0 : mtlID);
   }
+  isSigned = !((cornerSigns[0] == cornerSigns[1]) &&
+               (cornerSigns[1] == cornerSigns[2]) &&
+               (cornerSigns[2] == cornerSigns[3]) &&
+               (cornerSigns[3] == cornerSigns[4]) &&
+               (cornerSigns[4] == cornerSigns[5]) &&
+               (cornerSigns[5] == cornerSigns[6]) &&
+               (cornerSigns[6] == cornerSigns[7]));
 }
 
 void RectilinearGrid::calCornerComponents() {
@@ -91,8 +103,16 @@ void RectilinearGrid::calCornerComponents() {
 
 bool RectilinearGrid::sampleQef(ScalarField *t, bool all) {
   calCornerComponents();
-  auto min = codeToPos(minCode, RectilinearGrid::getUnitSize());
-  auto size = codeToPos(maxCode - minCode, RectilinearGrid::getUnitSize());
+  const auto min = codeToPos(minCode, RectilinearGrid::getUnitSize());
+
+  LOGV(min)
+  // auto minX = codeToPos(minCode, RectilinearGrid::getUnitSize()).x;
+  // assert(!isinf(minX));
+  auto isize = maxCode - minCode;
+  auto size = codeToPos(isize, RectilinearGrid::getUnitSize());
+  assert(!isnan(size.x));
+  // size = codeToPos(isize, RectilinearGrid::getUnitSize());
+
   fvec3 cornerPositions[8];
   for (int i = 0; i < 8; ++i) {
     cornerPositions[i] = min + size * min_offset_subdivision(i);

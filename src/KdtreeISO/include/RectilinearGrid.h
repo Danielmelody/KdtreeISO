@@ -25,10 +25,11 @@ struct RectilinearGrid {
   Vertex approximate;
   uint8_t cornerSigns[8]{0};
   int8_t componentIndices[8]{0};
+  bool isSigned = false;
   std::map<RectilinearGrid *, Vertex *> faceVertices;
 
-  explicit RectilinearGrid(PositionCode minCode = PositionCode(0),
-                           PositionCode maxCode = PositionCode(0),
+  explicit RectilinearGrid(PositionCode minCode = PositionCode(0, 0, 0),
+                           PositionCode maxCode = PositionCode(0, 0, 0),
                            QefSolver sum = QefSolver())
     : minCode(minCode), maxCode(maxCode), allQef(sum) {
     solve(allQef, approximate);

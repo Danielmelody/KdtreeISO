@@ -17,17 +17,18 @@
 #include "Utils.h"
 #include "Indicators.h"
 
-Octree *Octree::buildWithScalarField(PositionCode minCode, int depth, ScalarField *scalarField, bool as_mipmap) {
+Octree *Octree::buildWithScalarField(const PositionCode &minCode, int depth, ScalarField *scalarField, bool as_mipmap) {
   PositionCode sizeCode = PositionCode(1 << (depth - 1));
   auto root = new Octree(minCode, minCode + sizeCode, depth);
   assert(depth > 0);
   root->grid.assignSign(scalarField);
   bool noChildren = true;
   if (depth == 1) {
-    if (!root->grid.sampleQef(scalarField, true)) {
+    if (!root->grid.isSigned) {
       delete root;
       return nullptr;
     }
+    root->grid.sampleQef(scalarField, true);
     root->isLeaf = true;
   }
   else {
@@ -64,7 +65,7 @@ Octree *Octree::buildWithScalarField(PositionCode minCode, int depth, ScalarFiel
   return root;
 }
 
-void Octree::getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefSolver &out) {
+void Octree::getSum(Octree *root, const PositionCode &minPos, const PositionCode &maxPos, QefSolver &out) {
   if (!root) {
     return;
   }
@@ -74,14 +75,14 @@ void Octree::getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefS
   if (glm::any(glm::greaterThanEqual(minPos, root->grid.maxCode)) || glm::any(glm::lessThanEqual(maxPos, root->grid.minCode))) {
     return;
   }
-  minPos = glm::max(root->grid.minCode, minPos);
-  maxPos = glm::min(root->grid.maxCode, maxPos);
-  if (minPos == root->grid.minCode && maxPos == root->grid.maxCode) {
+  auto minPosBound = glm::max(root->grid.minCode, minPos);
+  auto maxPosBound = glm::min(root->grid.maxCode, maxPos);
+  if (minPosBound == root->grid.minCode && maxPosBound == root->grid.maxCode) {
     out.combine(root->grid.allQef);
     return;
   }
   for (int i = 0; i < 8; ++i) {
-    getSum(root->children[i], minPos, maxPos, out);
+    getSum(root->children[i], minPosBound, maxPosBound, out);
   }
 }
 

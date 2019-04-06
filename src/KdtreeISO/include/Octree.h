@@ -24,8 +24,8 @@ typedef std::unordered_set<std::set<Vertex *>, ContainerHasher<std::set<Vertex *
 
 struct Octree {
   public:
-  static Octree *buildWithScalarField(PositionCode minCode, int depth, ScalarField *scalarField, bool as_mipmap);
-  static void getSum(Octree *root, PositionCode minPos, PositionCode maxPos, QefSolver &out);
+  static Octree *buildWithScalarField(const PositionCode &minCode, int depth, ScalarField *scalarField, bool as_mipmap);
+  static void getSum(Octree *root, const PositionCode &minPos, const PositionCode &maxPos, QefSolver &out);
   static void simplify(Octree *root, float threshold);
   static void calClusterbility(Octree *root, ScalarField *s);
 
@@ -35,10 +35,10 @@ struct Octree {
                            bool intersectionFree = true);
   static void drawOctrees(Octree *root, Mesh *mesh);
   void combineComponents(ScalarField *s);
-  Octree(PositionCode minCode, PositionCode maxCode, int depth) : grid(minCode, maxCode),
-                                                                  childIndex(-1),
-                                                                  isLeaf(false),
-                                                                  depth(depth){};
+  Octree(const PositionCode &minCode, const PositionCode &maxCode, int depth) : grid(minCode, maxCode),
+                                                                                childIndex(-1),
+                                                                                isLeaf(false),
+                                                                                depth(depth){};
   ~Octree() = default;
 
   protected:

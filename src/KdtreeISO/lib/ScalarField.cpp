@@ -3,6 +3,7 @@
 //
 
 #include <glm/glm.hpp>
+
 #include "RectilinearGrid.h"
 #include "ScalarField.h"
 

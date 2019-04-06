@@ -5,6 +5,7 @@
 #ifndef VOXELWORLD_GENERATORS_H
 #define VOXELWORLD_GENERATORS_H
 
+#include <iostream>
 #include <algorithm>
 #include <vector>
 #include <glm/glm.hpp>
@@ -95,24 +96,24 @@ class Intersection : public Topology {
 };
 
 class Transform : public Topology {
-  glm::mat4 trans;
-  Topology *inner;
+  glm::mat4 trans_;
+  Topology *inner_;
 
   public:
-  Transform(const glm::mat4 &trans, Topology *inner) : trans(trans), inner(inner) {}
-  ~Transform() override { delete inner; }
+  Transform(const glm::mat4 &trans, Topology *inner) : trans_(trans), inner_(inner) {}
+  ~Transform() override { delete inner_; }
   float value(const glm::fvec3 &root) override;
 };
 
 class Sphere : public Topology {
   float radius;
-  glm::fvec3 center;
+  fvec3 center;
 
   public:
   explicit Sphere(float radius, glm::fvec3 center = glm::fvec3(0)) : radius(radius), center(center) {}
-  ~Sphere() override {}
+  ~Sphere() override { std::cout << "free sphere" << std::endl; }
   float value(const glm::fvec3 &p) override;
-  bool solve(const glm::fvec3 &p1, const glm::fvec3 &p2, glm::fvec3 &out) override;
+  // bool solve(const glm::fvec3 &p1, const glm::fvec3 &p2, glm::fvec3 &out) override;
 };
 
 class AABB : public Topology {

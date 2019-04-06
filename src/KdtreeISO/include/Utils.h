@@ -5,12 +5,35 @@
 #ifndef VOXELWORLD_UTILS_H
 #define VOXELWORLD_UTILS_H
 
-#include "cmath"
+#define GLM_FORCE_EXPLICIT_CTOR
+
 #include <glm/glm.hpp>
+#include <cmath>
+#include <iostream>
 
 using glm::fvec3;
 
-using PositionCode = glm::tvec3<int>;
+using PositionCode = glm::ivec3;
+
+// for strange reason the binary operators not work in darwin 10.14 clang debug mode
+#define CodeBinaryOp(a, b, op) \
+  PositionCode(a.x op b.x, a.y op b.y, a.z op b.z)
+
+#ifndef NDEBUG
+#define LOGV(v) \
+  std::cout << #v << " " << v.x << " " << v.y << " " << v.z << " " << std::endl;
+
+#define LOGF(v) \
+  std::cout << #v << " " << v << std::endl;
+
+#define LOGV4(v) \
+  std::cout << #v << " " << v.x << " " << v.y << " " << v.z << " " << v.w << std::endl;
+
+#else
+#define LOGV(v)
+#define LOGV4(v)
+#define LOGF(v)
+#endif
 
 inline bool segmentFaceIntersection(const fvec3 &va, const fvec3 &vb, const fvec3 &min, const fvec3 &max, int dir) {
   float l = (vb - va)[dir];
@@ -43,15 +66,17 @@ struct ContainerHasher {
   }
 };
 
-inline glm::fvec3 codeToPos(PositionCode code, float cellSize) {
-  return fvec3((float)code.x * cellSize, (float)code.y * cellSize, (float)code.z * cellSize);
+inline fvec3 codeToPos(const PositionCode &code, float cellSize) {
+  // LOGV(code)
+  auto result = fvec3(static_cast<float>(code.x) * cellSize, static_cast<float>(code.y) * cellSize, static_cast<float>(code.z) * cellSize);
+  return result;
 }
 
-inline PositionCode posToCode(glm::fvec3 pos, float cellSize) {
+inline PositionCode posToCode(const glm::fvec3 &pos, float cellSize) {
   return PositionCode(std::round(pos.x / cellSize), std::round(pos.y / cellSize), std::round(pos.z / cellSize));
 }
 
-inline PositionCode posToCodeFloor(glm::fvec3 pos, float cellSize) {
+inline PositionCode posToCodeFloor(const glm::fvec3 &pos, float cellSize) {
   return PositionCode(pos.x / cellSize, pos.y / cellSize, pos.z / cellSize);
 }
 

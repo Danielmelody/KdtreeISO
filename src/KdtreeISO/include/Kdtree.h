@@ -24,14 +24,14 @@ struct Kdtree {
   bool clusterable{true};
   Kdtree *children[2]{nullptr, nullptr};
   Kdtree(QefSolver sum,
-         PositionCode minCode,
-         PositionCode maxCode,
+         const PositionCode &minCode,
+         const PositionCode &maxCode,
          int dir,
          int depth)
     : grid(minCode, maxCode, sum),
       planeDir(dir),
       depth(depth) {}
-  inline bool isContouringLeaf(float threshold) {
+  inline bool isContouringLeaf(float threshold) const {
     if (!children[0] && !children[1]) {
       return true;
     }
@@ -45,7 +45,7 @@ struct Kdtree {
     }
     return clusterable;
   }
-  inline bool isLeaf() {
+  inline bool isLeaf() const {
     return !children[0] && !children[1];
   }
   inline int axis() {
@@ -88,10 +88,10 @@ struct Kdtree {
                            Mesh *mesh,
                            ScalarField *t,
                            float threshold);
-  static int chooseAxisDir(Octree *octree, QefSolver &qef, PositionCode minCode, PositionCode maxCode);
+  static int chooseAxisDir(Octree *octree, QefSolver &qef, const PositionCode &minCode, const PositionCode &maxCode);
   static Kdtree *buildFromOctree(Octree *octree,
-                                 PositionCode minCode,
-                                 PositionCode maxCode,
+                                 const PositionCode &minCode,
+                                 const PositionCode &maxCode,
                                  ScalarField *t,
                                  int depth);
   static void drawKdtree(Kdtree *root, Mesh *mesh, float threshold);
