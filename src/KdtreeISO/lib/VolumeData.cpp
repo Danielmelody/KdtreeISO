@@ -8,18 +8,24 @@
 #include <glm/gtc/type_precision.hpp>
 
 void VolumeData::readTIFF() {
-  data = static_cast<uint8_t *>(_TIFFmalloc(width * height * levels));
-  uint8_t *p = data;
-  for (int i = 1; i < levels + 1; ++i) {
+  TIFF *firstFile = TIFFOpen((pathToTiffs + "001.tif").c_str(), "r");
+  if (!firstFile)
+    throw "no .tif file found";
+  TIFFGetField(firstFile, TIFFTAG_IMAGEWIDTH, &width);
+  TIFFGetField(firstFile, TIFFTAG_IMAGELENGTH, &height);
+  data.resize(width * height * levels);
+  uint8_t *p = data.data();
+  for (int i = 0; i < levels; ++i) {
     std::stringstream namess;
-    namess << std::setfill('0') << std::setw(3) << i;
-    auto name = (wildcard + namess.str() + ".tif");
-    TIFF *file = TIFFOpen(name.c_str(), "r");
-    for (int h = 0; h < height; ++h) {
-      TIFFReadScanline(file, p, h);
-      p += width;
+    namess << std::setfill('0') << std::setw(3) << i + 1;
+    auto name = (pathToTiffs + namess.str() + ".tif");
+    if (TIFF *file = TIFFOpen(name.c_str(), "r")) {
+      for (int h = 0; h < height; ++h) {
+        TIFFReadScanline(file, p, h);
+        p += width;
+      }
+      TIFFClose(file);
     }
-    TIFFClose(file);
   }
 }
 
@@ -28,14 +34,13 @@ float VolumeData::index(const PositionCode &code) {
   if (offset >= width * height * levels || offset < 0) {
     return ISO_VAL;
   }
-  uint8_t *ptr = data + offset;
-  return ISO_VAL - (*ptr);
+  return ISO_VAL - data[offset];
 }
 
 float VolumeData::value(const glm::fvec3 &p) {
   float l = RectilinearGrid::getUnitSize();
-  return index(posToCode(p, l));
-  /*PositionCode samples[8];
+  // return index(posToCode(p, l));
+  PositionCode samples[8];
   float values[8];
   for (int i = 0; i < 8; ++i) {
     samples[i] = posToCodeFloor(p + l * min_offset_subdivision(i), l);
@@ -50,7 +55,7 @@ float VolumeData::value(const glm::fvec3 &p) {
   float c0 = c00 * (1 - d.y) + c10 * d.y;
   float c1 = c01 * (1 - d.y) + c11 * d.y;
   float c = c0 * (1 - d.z) + c1 * d.z;
-  return c;*/
+  return c;
 }
 
 bool VolumeData::solve(const glm::fvec3 &p1, const glm::fvec3 &p2,

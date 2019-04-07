@@ -181,22 +181,19 @@ void press(GLFWwindow *window, int button, int action, int) {
   }
 }
 
-int main(int argc, const char **argv) {
+int main(int argc, char *argv[]) {
 
   cxxopts::Options options("opengl_viewer",
                            "An opengl viewer for paper: Discrete k-d Tree "
                            "Hierarchy for Isosurface Extraction");
-  options.add_options()("e,error", "Error threshold.",
-                        cxxopts::value<float>()->default_value("1e-7"))(
-    "s,structure", "oct/kd, extracting iso-surface using oct/kd tree.",
-    cxxopts::value<std::string>()->default_value("oct"))(
-    "rotateX", "Camera eular angle x.",
-    cxxopts::value<float>()->default_value("0"))(
-    "rotateY", "Camera eular angle y.",
-    cxxopts::value<float>()->default_value("0"))("v,volume", "Volume source")(
-    "o,output", "Output first frame to a file.",
-    cxxopts::value<std::string>()->default_value("null"))(
-    "h,help", "Print help and exit.");
+  options.add_options()                                                                                                       //
+    ("e,error", "Error threshold.", cxxopts::value<float>()->default_value("1e-7"))                                           //
+    ("s,structure", "oct/kd, extracting iso-surface using oct/kd tree.", cxxopts::value<std::string>()->default_value("oct")) //
+    ("rotateX", "Camera eular angle x.", cxxopts::value<float>()->default_value("0"))                                         //
+    ("rotateY", "Camera eular angle y.", cxxopts::value<float>()->default_value("0"))                                         //
+    ("v,volume", "Volume source (tiff file)", cxxopts::value<std::string>()->default_value(""))                               //
+    ("o,output", "Output first frame to a file.", cxxopts::value<std::string>()->default_value("null"))                       //
+    ("h,help", "Print help and exit.");
 
   auto parameters = options.parse(argc, argv);
   rotateX = parameters["rotateX"].as<float>();
@@ -258,7 +255,7 @@ int main(int argc, const char **argv) {
 
   MeshBuffer meshBuffers[4];
 
-  Transform topology(
+  std::unique_ptr<ScalarField> scalarField = std::make_unique<Transform>(
     mat4(1.0),
     // new Difference(
     //   new AABB(fvec3(-4), fvec3(4)),
@@ -358,24 +355,24 @@ int main(int argc, const char **argv) {
     //      )
   );
 
-  int octDepth = 6;
-  RectilinearGrid::setUnitSize((float)(16 / std::pow(octDepth, 2)));
+  constexpr int octDepth = 8;
+  constexpr int octSize = 16;
+  RectilinearGrid::setUnitSize((float)(octSize / std::pow(octDepth, 2)));
   PositionCode sizeCode = PositionCode(1 << (octDepth - 1));
   float threshold = parameters["e"].as<float>();
 
-  ScalarField *scalarField = &topology;
   if (parameters.count("volume")) {
-    VolumeData volumeData(parameters["volume"].as<std::string>(), 99, 128, 128,
-                          -sizeCode / 2, PositionCode(1));
-    volumeData.readTIFF();
+    auto volumeData = new VolumeData(parameters["volume"].as<std::string>(), 256,
+                                     -sizeCode / 2, PositionCode(2));
+    volumeData->readTIFF();
+    scalarField.reset(volumeData);
     cout << "vulome read" << endl;
-    scalarField = &volumeData;
   }
 
   clock_t begin = clock();
 
   Octree *octree =
-    Octree::buildWithScalarField(-sizeCode / 2, octDepth, scalarField,
+    Octree::buildWithScalarField(-sizeCode / 2, octDepth, scalarField.get(),
                                  parameters["s"].as<std::string>() == "kd");
   if (!octree) {
     std::cout << "no sign change found!, program exited." << std::endl;
@@ -393,13 +390,13 @@ int main(int argc, const char **argv) {
   if ((parameters["s"].as<std::string>()) == "kd") {
     cout << "extract using kdtree" << endl;
     kdtree = Kdtree::buildFromOctree(octree, -sizeCode / 2, sizeCode / 2,
-                                     scalarField, 0);
+                                     scalarField.get(), 0);
     clock_t kdbuild = clock();
     Kdtree::drawKdtree(kdtree, kdtreeVisual, threshold);
     kdbuild = clock();
     cout << "kd build time:" << (double)(kdbuild - oct_build) / CLOCKS_PER_SEC
          << endl;
-    mesh = Kdtree::extractMesh(kdtree, scalarField, threshold);
+    mesh = Kdtree::extractMesh(kdtree, scalarField.get(), threshold);
     clock_t kdextract = clock();
     cout << "kd extract time:" << (double)(kdextract - kdbuild) / CLOCKS_PER_SEC
          << endl;
@@ -407,7 +404,7 @@ int main(int argc, const char **argv) {
   else if ((parameters["s"].as<std::string>()) == "oct") {
     cout << "extract using octree" << endl;
     Octree::simplify(octree, threshold);
-    mesh = Octree::extractMesh(octree, scalarField,
+    mesh = Octree::extractMesh(octree, scalarField.get(),
                                intersectionPreservingVerticesCount,
                                intersectionFree);
     clock_t octextract = clock();
@@ -445,7 +442,7 @@ int main(int argc, const char **argv) {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       program.use();
       setUniforms(program);
-      drawMesh(mesh, meshBuffers[0], program, true, true);
+      drawMesh(mesh, meshBuffers[0], program, true, false);
       //      drawMesh(octreeVisual, meshBuffers[1], program, false, true);
       //      drawMesh(kdtreeVisual, meshBuffers[2], program, false, true);
       glfwSwapBuffers(window);

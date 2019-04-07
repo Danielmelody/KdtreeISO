@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Danielhu on 2018/5/29.
 //
 
@@ -23,7 +23,7 @@ class ScalarField {
   virtual glm::fvec3 gradient(const glm::fvec3 &p);
   uint8_t getMaterialID() { return materialID; }
   ScalarField() : materialID(1) {}
-  virtual ~ScalarField() = default;
+  virtual ~ScalarField(){};
 };
 
 #endif //VOXELWORLD_SCALARFIELD_H

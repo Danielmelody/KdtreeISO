@@ -208,7 +208,11 @@ void Kdtree::generateVertexIndices(Kdtree *root, Mesh *mesh, ScalarField *t, flo
   generateVertexIndices(root->children[1], mesh, t, threshold);
 }
 
-AALine constructLine(const Kdtree::FaceKd &faceNodes, int side, int originFaceDir, int axis, float threshold) {
+AALine constructLine(const Kdtree::FaceKd &faceNodes, int side, int originFaceDir, int axis, float
+#ifndef NDEBUG
+                                                                                               threshold
+#endif
+) {
   AALine line;
   line.point[originFaceDir] = axis;
   assert(!faceNodes[side]->isContouringLeaf(threshold));

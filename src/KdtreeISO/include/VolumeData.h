@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Danielhu on 2018/5/29.
 //
 
@@ -20,21 +20,19 @@ extern "C" {
 
 class VolumeData : public ScalarField {
   static constexpr float ISO_VAL = 105.f;
-  std::string wildcard;
-  const int levels;
-  const int width;
-  const int height;
-  uint8_t *data{nullptr};
+  std::string pathToTiffs;
+  int levels;
+  int width = 0;
+  int height = 0;
+  std::vector<uint8_t> data;
   PositionCode minCode;
   PositionCode scale;
   float index(const PositionCode &code) override;
 
   public:
-  VolumeData(std::string wildcard, int levels, int width, int height, const PositionCode &minCode, const PositionCode &scale)
-    : wildcard(std::move(wildcard)),
+  VolumeData(const std::string &pathToTiffs, int levels, const PositionCode &minCode, const PositionCode &scale)
+    : pathToTiffs(pathToTiffs),
       levels(levels),
-      width(width),
-      height(height),
       minCode(minCode),
       scale(scale) {}
   inline int codeToOffset(const PositionCode &code) {
