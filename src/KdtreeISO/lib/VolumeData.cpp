@@ -32,15 +32,24 @@ void VolumeData::readTIFF() {
 float VolumeData::index(const PositionCode &code) {
   auto offset = codeToOffset((code - minCode) * scale);
   if (offset >= width * height * levels || offset < 0) {
-    return ISO_VAL;
+    return isovalue;
   }
-  return ISO_VAL - data[offset];
+
+  // return ISO_VAL - (float)data[codeToOffset((code - minCode) * scale)];
+
+  float result = 0;
+  for (int x = 0; x < scale.x; ++x)
+    for (int y = 0; y < scale.y; ++y)
+      for (int z = 0; z < scale.z; ++z) {
+        result += (float)data[codeToOffset((code - minCode) * scale + PositionCode(x, y, z))];
+      }
+  return result / (scale.x * scale.y * scale.z) - isovalue;
 }
 
 float VolumeData::value(const glm::fvec3 &p) {
   float l = RectilinearGrid::getUnitSize();
-  // return index(posToCode(p, l));
-  PositionCode samples[8];
+  return index(posToCode(p, l));
+  /* PositionCode samples[8];
   float values[8];
   for (int i = 0; i < 8; ++i) {
     samples[i] = posToCodeFloor(p + l * min_offset_subdivision(i), l);
@@ -55,7 +64,7 @@ float VolumeData::value(const glm::fvec3 &p) {
   float c0 = c00 * (1 - d.y) + c10 * d.y;
   float c1 = c01 * (1 - d.y) + c11 * d.y;
   float c = c0 * (1 - d.z) + c1 * d.z;
-  return c;
+  return c;*/
 }
 
 bool VolumeData::solve(const glm::fvec3 &p1, const glm::fvec3 &p2,

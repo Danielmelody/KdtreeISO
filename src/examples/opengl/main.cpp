@@ -167,7 +167,7 @@ void mouseInput(GLFWwindow *, double x, double y) {
 }
 
 void scroll(GLFWwindow *, double, double dy) {
-  cameraOffset -= 0.2f * (float)dy;
+  cameraOffset -= 0.01f * cameraOffset * (float)dy;
   pressing = true;
 }
 
@@ -357,6 +357,9 @@ int main(int argc, char *argv[]) {
 
   constexpr int octDepth = 8;
   constexpr int octSize = 16;
+
+  cameraOffset = octSize * 2;
+
   RectilinearGrid::setUnitSize((float)(octSize / std::pow(octDepth, 2)));
   PositionCode sizeCode = PositionCode(1 << (octDepth - 1));
   float threshold = parameters["e"].as<float>();

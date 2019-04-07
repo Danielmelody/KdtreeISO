@@ -19,7 +19,7 @@ extern "C" {
 #include "Utils.h"
 
 class VolumeData : public ScalarField {
-  static constexpr float ISO_VAL = 105.f;
+  float isovalue = 31.5f;
   std::string pathToTiffs;
   int levels;
   int width = 0;
