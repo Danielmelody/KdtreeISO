@@ -9,6 +9,7 @@
 #include <cmath>
 #include <ctime>
 #include <glm/glm.hpp>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <unordered_set>
@@ -181,6 +182,8 @@ void press(GLFWwindow *window, int button, int action, int) {
   }
 }
 
+void generateObjFromMesh(Mesh *mesh, string name);
+
 int main(int argc, char *argv[]) {
 
   cxxopts::Options options("opengl_viewer",
@@ -192,7 +195,8 @@ int main(int argc, char *argv[]) {
     ("rotateX", "Camera eular angle x.", cxxopts::value<float>()->default_value("0"))                                         //
     ("rotateY", "Camera eular angle y.", cxxopts::value<float>()->default_value("0"))                                         //
     ("v,volume", "Volume source (tiff file)", cxxopts::value<std::string>()->default_value(""))                               //
-    ("o,output", "Output first frame to a file.", cxxopts::value<std::string>()->default_value("null"))                       //
+    ("c, capture", "Capture first frame to a file.", cxxopts::value<std::string>()->default_value("null"))                    //
+    ("o, output", "Output obj file", cxxopts::value<std::string>()->default_value("./result.obj"))                            //
     ("h,help", "Print help and exit.");
 
   auto parameters = options.parse(argc, argv);
@@ -424,6 +428,12 @@ int main(int argc, char *argv[]) {
   cout << "intersection contours: " << intersectionPreservingVerticesCount
        << endl;
   mesh->generateFlatNormals();
+
+  // dump mesh
+  if (parameters.count("output")) {
+    generateObjFromMesh(mesh, parameters["output"].as<std::string>());
+  }
+
   //
   Program program;
   if (!program.init(vert, frag)) {
@@ -451,11 +461,11 @@ int main(int argc, char *argv[]) {
       glfwSwapBuffers(window);
       if (!inited) {
         stringstream outss;
-        outss << parameters["o"].as<std::string>()
+        outss << parameters["c"].as<std::string>()
               << parameters["e"].as<float>() << "_"
               << parameters["s"].as<std::string>() << "_t"
               << mesh->indices.size() / 3;
-        if (parameters["o"].as<std::string>() != "null") {
+        if (parameters["c"].as<std::string>() != "null") {
           unsigned char image[width * height * 3];
           //          unsigned char *p = image;
           //          glPixelStorei(GL_PACK_ALIGNMENT, 0);
@@ -478,4 +488,69 @@ int main(int argc, char *argv[]) {
   delete octreeVisual;
   glfwTerminate();
   return 0;
+}
+
+void generateObjFromMesh(Mesh *mesh, string path) {
+
+  bool vtEnable = false;
+  string spaceString = " ";
+
+  ofstream writeSteam(path);
+  if (!writeSteam) {
+    cout << "open file failed";
+    return;
+  }
+
+  int vertexCount = mesh->positions.size();
+  int vertexNormalCount = mesh->normals.size();
+  int trignleCount = mesh->indices.size() / 3;
+
+  assert(vertexCount == vertexNormalCount);
+
+  writeSteam << "# vertex count" << vertexCount << endl;
+  writeSteam << "# triangle count" << trignleCount << endl;
+
+  writeSteam << "# vertex - v" << endl;
+  for (int i = 0; i < vertexCount; i++) {
+    writeSteam << "v" << spaceString << mesh->positions[i].x << spaceString << mesh->positions[i].y << spaceString << mesh->positions[i].z << endl;
+  }
+
+  if (vtEnable) {
+    writeSteam << endl
+               << endl
+               << endl
+               << "# texture - vt" << endl;
+    writeSteam << "vt" << spaceString << 0 << spaceString << 0 << endl;
+  }
+
+  writeSteam << endl
+             << endl
+             << endl
+             << "# normal - vn" << endl;
+  for (int i = 0; i < vertexNormalCount; i++) {
+    writeSteam << "vn" << spaceString << mesh->normals[i].x << spaceString << mesh->normals[i].y << spaceString << mesh->normals[i].z << endl;
+  }
+
+  writeSteam << endl
+             << endl
+             << endl
+             << "# face (triangle) - f" << endl;
+  for (int i = 0; i < trignleCount; i++) {
+    int offset = 1;
+    int index = 3 * i + 0;
+    if (vtEnable) {
+      writeSteam << "f" << spaceString
+                 << mesh->indices[index + 0] + offset << "/" << 1 << "/" << mesh->indices[index + 0] + offset << spaceString
+                 << mesh->indices[index + 1] + offset << "/" << 1 << "/" << mesh->indices[index + 1] + offset << spaceString
+                 << mesh->indices[index + 2] + offset << "/" << 1 << "/" << mesh->indices[index + 2] + offset << endl;
+    }
+    else {
+      writeSteam << "f" << spaceString
+                 << mesh->indices[index + 0] + offset << "//" << mesh->indices[index + 0] + offset << spaceString
+                 << mesh->indices[index + 1] + offset << "//" << mesh->indices[index + 1] + offset << spaceString
+                 << mesh->indices[index + 2] + offset << "//" << mesh->indices[index + 2] + offset << endl;
+    }
+  }
+  std::cout << "dump obj to " << path << std::endl;
+  writeSteam.close();
 }
