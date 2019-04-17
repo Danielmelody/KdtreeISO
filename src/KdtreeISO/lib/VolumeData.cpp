@@ -30,7 +30,7 @@ void VolumeData::readTIFF() {
 }
 
 float VolumeData::index(const PositionCode &code) {
-  auto offset = codeToOffset((code - minCode) * scale);
+  auto offset = codeToOffset((code - minCode) * scale + PositionCode(scale.x - 1, scale.y - 1, scale.z - 1));
   if (offset >= width * height * levels || offset < 0) {
     return isovalue;
   }

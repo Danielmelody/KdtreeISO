@@ -182,7 +182,7 @@ void press(GLFWwindow *window, int button, int action, int) {
   }
 }
 
-void generateObjFromMesh(Mesh *mesh, string name);
+void generateObjFromMesh(Mesh *mesh, string name, string type = "obj");
 
 int main(int argc, char *argv[]) {
 
@@ -195,8 +195,9 @@ int main(int argc, char *argv[]) {
     ("rotateX", "Camera eular angle x.", cxxopts::value<float>()->default_value("0"))                                         //
     ("rotateY", "Camera eular angle y.", cxxopts::value<float>()->default_value("0"))                                         //
     ("v,volume", "Volume source (tiff file)", cxxopts::value<std::string>()->default_value(""))                               //
-    ("c, capture", "Capture first frame to a file.", cxxopts::value<std::string>()->default_value("null"))                    //
-    ("o, output", "Output obj file", cxxopts::value<std::string>()->default_value("./result.obj"))                            //
+    ("c,capture", "Capture first frame to a file.", cxxopts::value<std::string>()->default_value("null"))                     //
+    ("obj", "Output obj file", cxxopts::value<std::string>()->default_value("./result.obj"))                                  //
+    ("off", "Output off file", cxxopts::value<std::string>()->default_value("./result.off"))                                  //
     ("h,help", "Print help and exit.");
 
   auto parameters = options.parse(argc, argv);
@@ -430,8 +431,11 @@ int main(int argc, char *argv[]) {
   mesh->generateFlatNormals();
 
   // dump mesh
-  if (parameters.count("output")) {
-    generateObjFromMesh(mesh, parameters["output"].as<std::string>());
+  if (parameters.count("obj")) {
+    generateObjFromMesh(mesh, parameters["obj"].as<std::string>(), "obj");
+  }
+  if (parameters.count("off")) {
+    generateObjFromMesh(mesh, parameters["off"].as<std::string>(), "off");
   }
 
   //
@@ -490,7 +494,7 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-void generateObjFromMesh(Mesh *mesh, string path) {
+void generateObjFromMesh(Mesh *mesh, string path, string type) {
 
   bool vtEnable = false;
   string spaceString = " ";
@@ -507,48 +511,65 @@ void generateObjFromMesh(Mesh *mesh, string path) {
 
   assert(vertexCount == vertexNormalCount);
 
-  writeSteam << "# vertex count" << vertexCount << endl;
-  writeSteam << "# triangle count" << trignleCount << endl;
-
-  writeSteam << "# vertex - v" << endl;
-  for (int i = 0; i < vertexCount; i++) {
-    writeSteam << "v" << spaceString << mesh->positions[i].x << spaceString << mesh->positions[i].y << spaceString << mesh->positions[i].z << endl;
-  }
-
-  if (vtEnable) {
-    writeSteam << endl
-               << endl
-               << endl
-               << "# texture - vt" << endl;
-    writeSteam << "vt" << spaceString << 0 << spaceString << 0 << endl;
-  }
-
-  writeSteam << endl
-             << endl
-             << endl
-             << "# normal - vn" << endl;
-  for (int i = 0; i < vertexNormalCount; i++) {
-    writeSteam << "vn" << spaceString << mesh->normals[i].x << spaceString << mesh->normals[i].y << spaceString << mesh->normals[i].z << endl;
-  }
-
-  writeSteam << endl
-             << endl
-             << endl
-             << "# face (triangle) - f" << endl;
-  for (int i = 0; i < trignleCount; i++) {
-    int offset = 1;
-    int index = 3 * i + 0;
-    if (vtEnable) {
-      writeSteam << "f" << spaceString
-                 << mesh->indices[index + 0] + offset << "/" << 1 << "/" << mesh->indices[index + 0] + offset << spaceString
-                 << mesh->indices[index + 1] + offset << "/" << 1 << "/" << mesh->indices[index + 1] + offset << spaceString
-                 << mesh->indices[index + 2] + offset << "/" << 1 << "/" << mesh->indices[index + 2] + offset << endl;
+  if (type == "off") { // generate .off file
+    writeSteam << "OFF" << endl
+      << vertexCount << spaceString << trignleCount << spaceString << 0 << endl;
+    for (int i = 0; i < vertexCount; i++) {
+      writeSteam <<  mesh->positions[i].x << spaceString << mesh->positions[i].y << spaceString << mesh->positions[i].z << endl;
     }
-    else {
-      writeSteam << "f" << spaceString
-                 << mesh->indices[index + 0] + offset << "//" << mesh->indices[index + 0] + offset << spaceString
-                 << mesh->indices[index + 1] + offset << "//" << mesh->indices[index + 1] + offset << spaceString
-                 << mesh->indices[index + 2] + offset << "//" << mesh->indices[index + 2] + offset << endl;
+    for (int i = 0; i < trignleCount; i++) {
+      int offset = 0;
+      int index = 3 * i + 0;
+      writeSteam << 3 << spaceString
+        << mesh->indices[index + 0] + offset  << spaceString
+        << mesh->indices[index + 1] + offset  << spaceString
+        << mesh->indices[index + 2] + offset  << endl;
+    }
+  }
+  else { // generate .obj file
+    writeSteam << "# vertex count" << vertexCount << endl;
+    writeSteam << "# triangle count" << trignleCount << endl;
+
+    writeSteam << "# vertex - v" << endl;
+    for (int i = 0; i < vertexCount; i++) {
+      writeSteam << "v" << spaceString << mesh->positions[i].x << spaceString << mesh->positions[i].y << spaceString << mesh->positions[i].z << endl;
+    }
+
+    if (vtEnable) {
+      writeSteam << endl
+        << endl
+        << endl
+        << "# texture - vt" << endl;
+      writeSteam << "vt" << spaceString << 0 << spaceString << 0 << endl;
+    }
+
+    writeSteam << endl
+      << endl
+      << endl
+      << "# normal - vn" << endl;
+    for (int i = 0; i < vertexNormalCount; i++) {
+      writeSteam << "vn" << spaceString << mesh->normals[i].x << spaceString << mesh->normals[i].y << spaceString << mesh->normals[i].z << endl;
+    }
+
+    writeSteam << endl
+      << endl
+      << endl
+      << "# face (triangle) - f" << endl;
+    for (int i = 0; i < trignleCount; i++) {
+      int offset = 1;
+      int index = 3 * i + 0;
+      if (vtEnable) {
+        writeSteam << "f" << spaceString
+          << mesh->indices[index + 0] + offset << "/" << 1 << "/" << mesh->indices[index + 0] + offset << spaceString
+          << mesh->indices[index + 1] + offset << "/" << 1 << "/" << mesh->indices[index + 1] + offset << spaceString
+          << mesh->indices[index + 2] + offset << "/" << 1 << "/" << mesh->indices[index + 2] + offset << endl;
+      }
+      else {
+        writeSteam << "f" << spaceString
+          << mesh->indices[index + 0] + offset << "//" << mesh->indices[index + 0] + offset << spaceString
+          << mesh->indices[index + 1] + offset << "//" << mesh->indices[index + 1] + offset << spaceString
+          << mesh->indices[index + 2] + offset << "//" << mesh->indices[index + 2] + offset << endl;
+      }
     }
   }
   std::cout << "dump obj to " << path << std::endl;
