@@ -1,4 +1,4 @@
-﻿//
+//
 // Created by Danielhu on 2018/5/10.
 //
 
@@ -30,8 +30,9 @@ void RectilinearGrid::solveComponent(int i) {
 void RectilinearGrid::solve(QefSolver &qef, Vertex &v) {
   auto &p = v.hermiteP;
   qef.solve(p, v.error);
-  const auto min = codeToPos(minCode, RectilinearGrid::getUnitSize()); //- RectilinearGrid::getUnitSize() * 0.1f;
-  const auto max = codeToPos(maxCode, RectilinearGrid::getUnitSize()); //+ RectilinearGrid::getUnitSize() * 0.1f;
+  auto extends = codeToPos(maxCode - minCode, RectilinearGrid::getUnitSize()) * 0.5f;
+  const auto min = codeToPos(minCode, RectilinearGrid::getUnitSize()) - extends;
+  const auto max = codeToPos(maxCode, RectilinearGrid::getUnitSize()) + extends;
   if (p.x < min.x || p.x > max.x ||
       p.y < min.y || p.y > max.y ||
       p.z < min.z || p.z > max.z) {
