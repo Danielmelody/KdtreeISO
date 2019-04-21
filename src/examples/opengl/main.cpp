@@ -182,7 +182,7 @@ void press(GLFWwindow *window, int button, int action, int) {
   }
 }
 
-void generateObjFromMesh(Mesh *mesh, string name);
+void dumpObj(Mesh *mesh, string name);
 
 int main(int argc, char *argv[]) {
 
@@ -431,7 +431,7 @@ int main(int argc, char *argv[]) {
 
   // dump mesh
   if (parameters.count("output")) {
-    generateObjFromMesh(mesh, parameters["output"].as<std::string>());
+    dumpObj(mesh, parameters["output"].as<std::string>());
   }
 
   //
@@ -490,7 +490,7 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-void generateObjFromMesh(Mesh *mesh, string path) {
+void dumpObj(Mesh *mesh, string path) {
 
   bool vtEnable = false;
   string spaceString = " ";
@@ -501,9 +501,9 @@ void generateObjFromMesh(Mesh *mesh, string path) {
     return;
   }
 
-  int vertexCount = mesh->positions.size();
-  int vertexNormalCount = mesh->normals.size();
-  int trignleCount = mesh->indices.size() / 3;
+  auto vertexCount = mesh->positions.size();
+  auto vertexNormalCount = mesh->normals.size();
+  auto trignleCount = mesh->indices.size() / 3;
 
   assert(vertexCount == vertexNormalCount);
 
@@ -511,7 +511,7 @@ void generateObjFromMesh(Mesh *mesh, string path) {
   writeSteam << "# triangle count" << trignleCount << endl;
 
   writeSteam << "# vertex - v" << endl;
-  for (int i = 0; i < vertexCount; i++) {
+  for (auto i = 0; i < vertexCount; i++) {
     writeSteam << "v" << spaceString << mesh->positions[i].x << spaceString << mesh->positions[i].y << spaceString << mesh->positions[i].z << endl;
   }
 
@@ -527,7 +527,7 @@ void generateObjFromMesh(Mesh *mesh, string path) {
              << endl
              << endl
              << "# normal - vn" << endl;
-  for (int i = 0; i < vertexNormalCount; i++) {
+  for (auto i = 0; i < vertexNormalCount; i++) {
     writeSteam << "vn" << spaceString << mesh->normals[i].x << spaceString << mesh->normals[i].y << spaceString << mesh->normals[i].z << endl;
   }
 
@@ -535,7 +535,7 @@ void generateObjFromMesh(Mesh *mesh, string path) {
              << endl
              << endl
              << "# face (triangle) - f" << endl;
-  for (int i = 0; i < trignleCount; i++) {
+  for (auto i = 0; i < trignleCount; i++) {
     int offset = 1;
     int index = 3 * i + 0;
     if (vtEnable) {
