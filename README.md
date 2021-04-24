@@ -2,9 +2,11 @@
 
 ![](./imgs/dragon.jpg)
 
+*This work is a failed siggraph asia 2019 submit paper, when I submit it I'm just a undergraduate doing my graduation project, I made this without a proper academic mentoring, but why not have a try, right?*
 
+*Now I upload the [paper](paper.pdf) draft, please note that the writtings is not very good, but can still explain the idea of this work.*
 
-This repository is the origin implementation of  *Discrete k-d Tree Hierarchy for Isosurface Extraction*. The picture above shows three reconstructed results of stanford dragon using uniform grid, octree and k-d tree under an error threshold of 1e0. 
+This repository is the origin implementation of  *[Discrete k-d Tree Hierarchy for Isosurface Extraction](paper.pdf)*. The picture above shows three reconstructed results of stanford dragon using uniform grid, octree and k-d tree under an error threshold of 1e0. 
 
 The triangle counts for those results are shown below. 
 
